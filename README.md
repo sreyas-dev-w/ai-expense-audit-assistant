@@ -11,7 +11,7 @@ ai-expense-audit-assistant/
 │
 ├── design/                  # UI reference
 │
-├── docs/                    # Project knowledge + development artifacts
+├── docs/                    # Project knowledge + development
 │   ├── requirements/
 │   ├── architecture/
 │   ├── agents/
@@ -29,6 +29,7 @@ ai-expense-audit-assistant/
 Monorepo with two apps:
 
 ## web
+
 Next.js (TypeScript + Tailwind) frontend with shadcn UI, TanStack Query, zod, react-hook-form and Hugeicons.
 
 ```bash
@@ -38,6 +39,7 @@ npm run dev
 ```
 
 ## api
+
 FastAPI backend.
 
 ```bash
