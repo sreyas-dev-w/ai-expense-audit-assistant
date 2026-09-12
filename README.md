@@ -1,5 +1,29 @@
 # AI Expense Audit Assistant
 
+## Recommended project folder structure
+
+ai-expense-audit-assistant/
+│
+├── apps/
+│   ├── web/                 # Next.js 
+│   └── api/                 # FastAPI 
+│
+├── design/                  # UI reference
+│
+├── docs/                    # Project knowledge + development artifacts
+│   ├── requirements/
+│   ├── architecture/
+│   ├── agents/
+│   ├── policies/
+│   ├── schemas/
+│   ├── workflows/
+│   ├── decisions/
+│   └── development/
+│
+├── .github/
+├── README.md
+└── CONTRIBUTING.md
+
 Monorepo with two apps:
 
 ## web
