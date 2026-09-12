@@ -2,11 +2,12 @@
 
 ## Recommended project folder structure
 
+```text
 ai-expense-audit-assistant/
 │
 ├── apps/
-│   ├── web/                 # Next.js 
-│   └── api/                 # FastAPI 
+│   ├── web/                 # Next.js
+│   └── api/                 # FastAPI
 │
 ├── design/                  # UI reference
 │
@@ -23,6 +24,7 @@ ai-expense-audit-assistant/
 ├── .github/
 ├── README.md
 └── CONTRIBUTING.md
+```
 
 Monorepo with two apps:
 
