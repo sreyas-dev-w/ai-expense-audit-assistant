@@ -1,0 +1,11 @@
+account_id,project_name,project_code,project_lead_id
+ACC-001,AI Expense Audit System,CAPSTONE-001,EMP-002
+ACC-001,Mobile App Development,CAPSTONE-002,EMP-003
+ACC-002,Cloud Migration,PROJECT-ABC,EMP-004
+ACC-002,Data Analytics Platform,PROJECT-XYZ,EMP-005
+ACC-003,International Expansion,PROJ-GLOBAL-001,EMP-006
+ACC-003,Partnership Development,PROJ-GLOBAL-002,EMP-002
+ACC-004,AI Research Lab,DIGITAL-AI,EMP-003
+ACC-004,Machine Learning Pipeline,DIGITAL-ML,EMP-004
+ACC-005,Infrastructure Upgrade,OPS-INFRA,EMP-005
+ACC-005,Support Systems,OPS-SUPPORT,EMP-006
