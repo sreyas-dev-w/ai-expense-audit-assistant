@@ -1,0 +1,6 @@
+account_id,account_name,fiscal_year,budget_allocated,spent_amount,remaining_budget,currency,account_hr_id
+ACC-001,Acme Corp,2026,5000000,1200000,3800000,INR,HR-001
+ACC-002,Tech Solutions,2026,3000000,800000,2200000,INR,HR-002
+ACC-003,Global Ventures,2026,4000000,1500000,2500000,INR,HR-003
+ACC-004,Digital Labs,2026,2000000,500000,1500000,INR,HR-004
+ACC-005,Operations Inc,2026,1500000,300000,1200000,INR,HR-005
