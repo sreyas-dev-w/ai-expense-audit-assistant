@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.routers.ocr import router as ocr_router
 from app.routers import health
 
 app = FastAPI(
@@ -16,5 +16,5 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(ocr_router)
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
