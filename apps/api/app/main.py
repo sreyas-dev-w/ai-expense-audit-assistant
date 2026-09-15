@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers.ocr import router as ocr_router
+from app.routers.ocr_extraction import router as ocr_router
 from app.routers import health
 
 app = FastAPI(
