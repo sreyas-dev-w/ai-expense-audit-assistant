@@ -1,16 +1,23 @@
 # Expense Audit Assistant — Architecture & Data Spec
 
-AI-powered expense audit system: FastAPI + LangGraph agents + Gemini Flash (LLM + OCR) + PostgreSQL with pgvector for RAG.
+AI-powered expense audit system: FastAPI + LangGraph agents + Gemini Flash (LLM) + PostgreSQL with pgvector for RAG.
+
+The system helps company auditors/managers review employee expense claims. A multi-agent workflow validates the claim
+against receipt data, business rules, and company policies, and produces a structured recommendation backed by relevant
+references.
+
+**Frontend:** Next.js (`apps/web`) · **Backend:** FastAPI (`apps/api`) · **Database:** PostgreSQL + pgvector ·
+**ORM:** SQLAlchemy 2.x · **Driver:** psycopg 3 · **Migrations:** Alembic · **Agents:** LangGraph · **LLM:** Google Gemini Flash
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[Employee / Auditor] --> B[React Frontend]
-    B <--> C[FastAPI App]
+    A[Employee / Auditor] --> B[Next.js Frontend]
+    B <--> C[FastAPI API Layer]
 
     subgraph BE["FastAPI Backend"]
-        C --> D["Middleware: CORS, Logging, Error Handling"]
+        C --> D[Middleware: CORS, Logging, Error Handling]
         D --> E{Routers}
         E --> E2[Upload]
         E --> E3[Claims]
@@ -21,20 +28,21 @@ flowchart TD
     end
 
     F --> G[Load Claim + Document]
-    G --> ORCH
+    G --> WF
 
-    subgraph WF["LangGraph Audit Workflow"]
+    subgraph WF["LangGraph Audit Workflow - sequential"]
+        direction TB
         ORCH[Audit Agent — Orchestrator]
-        ORCH -->|tool call| OCR[OCR & Extraction Agent]
-        ORCH -->|tool call| VAL["Validation Agent<br/>(incl. duplicate detection)"]
-        ORCH -->|tool call| RAG[Policy RAG Agent]
+        ORCH -->|call| OCR[OCR & Extraction Agent]
         OCR --> ORCH
+        ORCH -->|call| VAL["Validation Agent<br/>(incl. duplicate detection)"]
         VAL --> ORCH
+        ORCH -->|call| RAG[Policy RAG Agent]
         RAG --> ORCH
-        ORCH --> SAVE[Save Audit Result]
+        ORCH -->|tool call| SAVE[Persist Audit Result]
     end
 
-    OCR -. invoice extraction .-> GEM[(Gemini Flash)]
+    OCR -. structured extraction .-> GEM[(Gemini Flash)]
     VAL -. LLM reasoning .-> GEM
     RAG -. LLM reasoning .-> GEM
     ORCH -. evidence-based explanation .-> GEM
@@ -45,6 +53,9 @@ flowchart TD
     E3 & E5 & E6 --> DB
     DB --> E4 --> B
 ```
+
+The workflow is **sequential**: the Audit Agent coordinates the specialized sub-agents one stage at a time.
+Parallel agent execution is not used in the initial implementation.
 
 **Runtime flows**
 - `data/input/` → `seed_postgres.py` → PostgreSQL (employees, historical claims)
@@ -64,224 +75,79 @@ flowchart TD
 | Claim / File / Audit / Policy Service | Business logic behind each router |
 | Duplicate Service | Searches PostgreSQL for likely duplicate claims — invoked by the **Validation Agent** |
 | Gemini Client | Calls Gemini Flash with retry, timeout, rate-limit, JSON validation |
+| RAG Service | Policy vector retrieval for the **Policy RAG Agent** |
 
 *Auth is intentionally left out of the current architecture — it will be added in a later phase.*
 
 ## LangGraph Agents
 
-LangGraph runs only inside the audit background task (not a separate server). There is **one orchestrating agent and three sub-agents** — no standalone duplicate-detection agent; duplicate checking is handled inside the Validation Agent.
+LangGraph runs only inside the audit background task (not a separate server). There is **one orchestrating agent and
+three sub-agents**. The Audit Agent lives between stages: each sub-agent is invoked, returns a structured result,
+and control returns to the orchestrator before the next stage.
 
 | Agent | Role | Input | Output |
 |---|---|---|---|
-| **Audit Agent** (orchestrator) | Orchestrates the workflow: invokes the 3 sub-agents as tools, manages state/handoffs, and synthesizes the final result | Claim + document | Risk score, violation findings, recommendation |
-| OCR & Extraction Agent | Sub-agent, called by the orchestrator | Uploaded invoice/form | Structured invoice JSON (merchant, invoice #, date, amount, currency, category) |
-| Validation Agent | Sub-agent, called by the orchestrator. Checks total/tax/date/missing-receipt/claimed-amount mismatch **and** performs duplicate detection (exact + fuzzy match on invoice #, merchant, amount, file/image hashes) | Claim + extracted invoice JSON | Validation findings + duplicate score/candidates |
-| Policy RAG Agent | Sub-agent, called by the orchestrator | Category + claim context | Relevant policy rule + citation, retrieved via pgvector similarity search |
+| **Audit Agent** (orchestrator) | Orchestrates the workflow: invokes the 3 sub-agents, manages state/handoffs, aggregates results, persists state, and synthesizes the final result | Claim + document | Structured audit result: risk assessment, findings, recommendation, references |
+| OCR & Extraction Agent | Sub-agent, called by the orchestrator. Normalizes the input into structured data | Uploaded invoice/form | Structured expense data (merchant, invoice #, date, amount, currency, category) |
+| Validation Agent | Sub-agent, called by the orchestrator. Validates against deterministic application rules and detects duplicates (exact + fuzzy match on invoice #, merchant, amount, file/image hashes) | Claim + extracted expense data | Structured validation result + duplicate score/candidates |
+| Policy RAG Agent | Sub-agent, called by the orchestrator. Retrieves and reasons over company policy context | Category + claim context | Relevant policy findings + citations, retrieved via pgvector |
 
-**LLM usage:** Gemini Flash is the single model used across the whole workflow — OCR & Extraction (reading invoices/forms), Validation and Policy RAG reasoning, and the orchestrator's final evidence-based audit explanation. Simple deterministic checks (totals, date math) stay as plain Python, not Gemini calls.
+**LLM usage:** Gemini Flash is the single model used across the whole workflow — OCR & Extraction (reading
+invoices/forms), Validation and Policy RAG reasoning, and the orchestrator's final evidence-based audit explanation.
+Simple deterministic checks (totals, date math, required fields) stay as plain Python, not Gemini calls.
+
+## Layered Boundaries
+
+```text
+API
+  ↓
+Application / Workflow
+  ↓
+Agents
+  ↓
+Tools / Services
+  ↓
+Infrastructure
+  ↓
+PostgreSQL / External Services
+```
+
+Business logic must not be placed directly inside FastAPI route handlers. Agents must not construct SQL or hold
+database sessions; they use narrow, well-defined tools that delegate to application services.
 
 ## Project Structure
 
 ```
-expense-audit-assistant/
-│
-├── backend/
-│ │
-│ ├── app/
-│ │ ├── main.py
-│ │ │
-│ │ ├── api/
-│ │ │ ├── auth.py
-│ │ │ ├── uploads.py
-│ │ │ ├── claims.py
-│ │ │ ├── audits.py
-│ │ │ ├── policies.py
-│ │ │ ├── dashboard.py
-│ │ │ └── health.py
-│ │ │
-│ │ ├── core/
-│ │ │ ├── config.py
-│ │ │ ├── security.py
-│ │ │ ├── logging.py
-│ │ │ ├── exceptions.py
-│ │ │ └── dependencies.py
-│ │ │
-│ │ ├── db/
-│ │ │ ├── session.py
-│ │ │ ├── base.py
-│ │ │ └── migrations/
-│ │ │
-│ │ ├── models/
-│ │ │ ├── user.py
-│ │ │ ├── employee.py
-│ │ │ ├── claim.py
-│ │ │ ├── expense_line.py
-│ │ │ ├── document.py
-│ │ │ ├── audit_run.py
-│ │ │ ├── audit_finding.py
-│ │ │ ├── review_decision.py
-│ │ │ └── policy.py
-│ │ │
-│ │ ├── schemas/
-│ │ │ ├── auth.py
-│ │ │ ├── employee.py
-│ │ │ ├── claim.py
-│ │ │ ├── document.py
-│ │ │ ├── extraction.py
-│ │ │ ├── audit.py
-│ │ │ ├── policy.py
-│ │ │ └── common.py
-│ │ │
-│ │ ├── repositories/
-│ │ │ ├── employee_repository.py
-│ │ │ ├── claim_repository.py
-│ │ │ ├── document_repository.py
-│ │ │ ├── audit_repository.py
-│ │ │ └── policy_repository.py
-│ │ │
-│ │ ├── services/
-│ │ │ ├── auth_service.py
-│ │ │ ├── claim_service.py
-│ │ │ ├── file_service.py
-│ │ │ ├── audit_service.py
-│ │ │ ├── policy_service.py
-│ │ │ ├── rag_service.py
-│ │ │ ├── duplicate_service.py
-│ │ │ ├── gemini_client.py
-│ │ │ └── dashboard_service.py
-│ │ │
-│ │ ├── agents/
-│ │ │ ├── graph.py
-│ │ │ ├── state.py
-│ │ │ ├── audit_agent.py
-│ │ │ ├── ocr_agent.py
-│ │ │ ├── validation_agent.py
-│ │ │ └── policy_rag_agent.py
-│ │ │
-│ │ ├── rules/
-│ │ │ ├── amount_rules.py
-│ │ │ ├── date_rules.py
-│ │ │ ├── receipt_rules.py
-│ │ │ ├── category_rules.py
-│ │ │ └── policy_rules_loader.py
-│ │ │
-│ │ ├── prompts/
-│ │ │ ├── ocr_extraction_prompt.txt
-│ │ │ └── audit_assessment_prompt.txt
-│ │ │
-│ │ └── utils/
-│ │ ├── file_hash.py
-│ │ ├── image_hash.py
-│ │ ├── date_utils.py
-│ │ └── money_utils.py
-│ │
-│ ├── tests/
-│ │ ├── unit/
-│ │ │ ├── test_validation_agent.py
-│ │ │ ├── test_audit_agent.py
-│ │ │ └── test_rules.py
-│ │ ├── integration/
-│ │ │ ├── test_claim_api.py
-│ │ │ └── test_audit_workflow.py
-│ │ └── evaluation/
-│ │ └── test_expected_audit_results.py
-│ │
-│ ├── requirements.txt
-│ ├── Dockerfile
-│ └── .env.example
-│
-├── frontend/
-│ ├── src/
-│ │ ├── pages/
-│ │ │ ├── LoginPage.tsx
-│ │ │ ├── SubmitClaimPage.tsx
-│ │ │ ├── ClaimDetailsPage.tsx
-│ │ │ ├── AuditQueuePage.tsx
-│ │ │ ├── PolicyManagementPage.tsx
-│ │ │ └── DashboardPage.tsx
-│ │ │
-│ │ ├── components/
-│ │ │ ├── ClaimForm.tsx
-│ │ │ ├── FileUpload.tsx
-│ │ │ ├── AuditFindingCard.tsx
-│ │ │ ├── DuplicateComparison.tsx
-│ │ │ ├── PolicyCitation.tsx
-│ │ │ └── DashboardCharts.tsx
-│ │ │
-│ │ ├── services/
-│ │ │ ├── apiClient.ts
-│ │ │ ├── authService.ts
-│ │ │ ├── claimService.ts
-│ │ │ └── auditService.ts
-│ │ │
-│ │ ├── hooks/
-│ │ │ ├── useAuth.ts
-│ │ │ └── useAuditStatus.ts
-│ │ │
-│ │ ├── types/
-│ │ │ ├── claim.ts
-│ │ │ └── audit.ts
-│ │ │
-│ │ ├── App.tsx
-│ │ └── main.tsx
-│ │
-│ ├── package.json
-│ └── Dockerfile
-│
-├── data/
-│ ├── input/
-│ │ ├── master/
-│ │ │ └── employees.csv
-│ │ │
-│ │ ├── policies/
-│ │ │ ├── expense_policy_v1.pdf
-│ │ │ └── policy_rules_v1.json
-│ │ │
-│ │ ├── claims/
-│ │ │ ├── CLM-0001.json
-│ │ │ ├── CLM-0002.json
-│ │ │ └── CLM-0003.json
-│ │ │
-│ │ ├── reimbursement_forms/
-│ │ │ ├── CLM-0001_form.pdf
-│ │ │ ├── CLM-0002_form.pdf
-│ │ │ └── CLM-0003_form.pdf
-│ │ │
-│ │ ├── invoices/
-│ │ │ ├── INV-0001.pdf
-│ │ │ ├── INV-0002.jpg
-│ │ │ └── INV-0003.pdf
-│ │ │
-│ │ └── manifests/
-│ │ └── claims_manifest.csv
-│ │
-│ ├── ground_truth/
-│ │ ├── invoice_truth.json
-│ │ └── expected_audit_results.csv
-│ │
-│ └── generated/
-│ └── .gitkeep
-│
-├── storage/
-│ ├── uploads/
-│ │ └── .gitkeep
-│ │
-│ └── policies/
-│ └── .gitkeep
-│
-├── scripts/
-│ ├── generate_synthetic_data.py
-│ ├── seed_postgres.py
-│ ├── index_policies.py
-│ └── evaluate_audit_results.py
-│
-├── docs/
-│ ├── architecture.md
-│ ├── api_contract.md
-│ └── data_dictionary.md
-│
-├── docker-compose.yml
-├── .gitignore
-├── .env.example
-└── README.md
+apps/api/
+├── requirements.txt
+└── app/
+    ├── main.py
+    ├── api/                       # Routers (HTTP) - audits, auth, claims, dashboard, health, policies, uploads
+    ├── core/                      # config, security, logging, exceptions, dependencies
+    ├── db/                        # session, base, migrations/
+    ├── models/                    # SQLAlchemy ORM models
+    ├── schemas/                   # Pydantic contracts (API, agent, tool, persistence)
+    ├── repositories/              # data access layer
+    ├── services/                  # application/business logic, gemini client, rag, duplicate detection
+    ├── agents/                    # LangGraph - graph.py, state.py, audit_agent.py, ocr_agent.py,
+    │                              #   validation_agent.py, policy_rag_agent.py
+    ├── tools/                     # agent tool layer (planned)
+    ├── rules/                     # deterministic validation rules
+    ├── prompts/                   # LLM prompt templates
+    └── utils/                     # file_hash, image_hash, date_utils, money_utils
 ```
+
+The final human-facing outcome is **decision support for the auditor/manager** — recommendation, reasons, validation
+findings, policy findings, grounding references, warnings, and confidence — not autonomous approval or rejection
+unless that behavior is explicitly introduced later.
+
+## Technology Stack
+
+- **FastAPI** for HTTP APIs: typed request/response models, dependency injection, async endpoints.
+- **Pydantic** for structured contracts between API, agents, tools, and services.
+- **SQLAlchemy 2.x** (modern `Mapped` / `mapped_column` style) with **psycopg 3** as the driver.
+- **PostgreSQL** with JSON/JSONB only for genuinely semi-structured data.
+- **Alembic** for all schema migrations.
+- **pgvector** for policy document vector storage and similarity retrieval.
+
+Detailed standards: `backend/technology-stack.md`, `backend/rag-pipeline.md`.
