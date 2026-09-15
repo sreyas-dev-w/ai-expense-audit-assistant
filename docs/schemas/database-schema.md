@@ -56,8 +56,8 @@ erDiagram
     agentResponse{
         Integer id PK
         Integer claim_id FK
-        String validation_response
-        String policy_response
+        JsonB validation_response
+        JsonB policy_response
         String notes
         String confidence_score
     }
@@ -157,8 +157,8 @@ The domain types above map to PostgreSQL types as follows:
 |---|---|---|
 | `id` | INTEGER + IDENTITY | PK |
 | `claim_id` | INTEGER | NOT NULL, FK → `claims.claim_id` (CASCADE), indexed |
-| `validation_response` | TEXT | NULL |
-| `policy_response` | TEXT | NULL |
+| `validation_response` | JSONB | NULL, structured agent output |
+| `policy_response` | JSONB | NULL, structured agent output |
 | `notes` | TEXT | NULL |
 | `confidence_score` | NUMERIC(5,2) | NULL |
 
