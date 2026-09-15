@@ -38,7 +38,9 @@ Agent B
 - **API contracts** — `apps/api/app/schemas/`
 - **Agent output models** — defined alongside the agent or in shared schemas, following the same "define once"
   rule.
-- **Persistence models** — `apps/api/app/models/` (SQLAlchemy). These are distinct from schemas.
+- **Persistence models** — `apps/api/app/models/` (SQLAlchemy). The authoritative database schema is defined in
+  `docs/schemas/database-schema.md`; models and Alembic migrations must match it exactly. These are distinct from
+  public API schemas.
 
 ## Outcome
 

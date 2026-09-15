@@ -30,6 +30,7 @@ The repository's knowledge base. It serves two audiences:
 | Auditability | `backend/auditability.md` | Shaping the final audit result / grounding references |
 | Security | `backend/security.md` | Handling sensitive data, secrets, tool privileges |
 | Data contracts | `schemas/data-contracts.md` | Defining or evolving Pydantic contracts / agent messages |
+| Database schema | `schemas/database-schema.md` | The authoritative persistence schema; changing tables/columns/models |
 | Decisions | `decisions/0001-separation-of-responsibilities.md` | Reasoning about layer boundaries or applying the guiding principles |
 | Code standards | `development/code-standards.md` | Writing/completing Python or backend code |
 | Change process | `development/change-process.md` | Changing the agent workflow, database schema, or RAG pipeline |
