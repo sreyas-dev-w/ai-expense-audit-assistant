@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from app.tests.evaluation.test_employee_repository import EmployeeRepository
+from api.tests.evaluation.test_employee_repository import EmployeeRepository
 from app.schemas.extraction import (
     EmployeeContext,
     Extraction,
