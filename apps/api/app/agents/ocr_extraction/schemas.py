@@ -21,10 +21,6 @@ class EmployeeContext(BaseModel):
     account_id: Optional[str] = None
 
 
-class Receipt(BaseModel):
-    sha256: str
-
-
 class LineItem(BaseModel):
     description: str
     amount: float
@@ -34,7 +30,7 @@ class LineItem(BaseModel):
 class Extraction(BaseModel):
     is_receipt: bool
     merchant_name: Optional[str] = None
-    invoice_number: Optional[str] = None
+    receipt_number: Optional[str] = None
     expense_date: Optional[str] = None
     currency: Optional[str] = None
     total_amount: Optional[float] = None
@@ -48,5 +44,4 @@ class Extraction(BaseModel):
 class OCRResponse(BaseModel):
     submission: Submission
     employee_context: EmployeeContext
-    receipt: Receipt
     extraction: Extraction

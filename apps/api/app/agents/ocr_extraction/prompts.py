@@ -17,8 +17,8 @@ Extraction requirements:
 
 2. Extract the merchant or business name.
 
-3. Extract the invoice number or invoice reference number
-   exactly as shown on the document.
+3. Extract the invoice number, receipt number, or invoice reference
+   number exactly as shown on the document.Store this value in the receipt_number field.
 
 4. Extract the expense date.
    Normalize the date to YYYY-MM-DD when the date is clear.

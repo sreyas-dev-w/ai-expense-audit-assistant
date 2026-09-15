@@ -4,18 +4,15 @@ from app.agents.ocr_extraction.employee_repository import EmployeeRepository
 from app.agents.ocr_extraction.schemas import (
     EmployeeContext,
     OCRResponse,
-    Receipt,
     Submission,
 )
 from app.agents.ocr_extraction.services.gemini_service import GeminiService
-from app.agents.ocr_extraction.services.receipt_service import ReceiptService
 
 
 class OCRAgent:
 
     def __init__(self):
         self.employee_repository = EmployeeRepository()
-        self.receipt_service = ReceiptService()
         self.gemini_service = GeminiService()
 
     async def process(
@@ -140,7 +137,6 @@ class OCRAgent:
                 "was not found in the employee repository."
             )
 
-            # Gemini will NOT be called.
             raise ValueError(
                 f"Employee ID '{employee_id}' does not exist."
             )
@@ -164,7 +160,7 @@ class OCRAgent:
 
             print(
                 f"[OCR] Project '{employee['project_code']}' "
-                "found."
+                f"found."
             )
 
         else:
@@ -188,21 +184,7 @@ class OCRAgent:
         )
 
         # ==================================================
-        # 4. Receipt metadata
-        # ==================================================
-
-        receipt_metadata = self.receipt_service.generate_metadata(
-            receipt_bytes
-        )
-
-        receipt = Receipt(
-            sha256=receipt_metadata["sha256"],
-        )
-
-        print("[OCR] Receipt metadata generated.")
-
-        # ==================================================
-        # 5. Submission metadata
+        # 4. Submission metadata
         # ==================================================
 
         submission = Submission(
@@ -215,8 +197,9 @@ class OCRAgent:
 
         print("[OCR] Submission metadata created.")
 
+
         # ==================================================
-        # 6. Gemini receipt extraction
+        # 5. Gemini receipt extraction
         # ==================================================
 
         print(
@@ -234,13 +217,13 @@ class OCRAgent:
             f"for employee '{employee_id}'."
         )
 
+        
         # ==================================================
-        # 7. Return OCR response
+        # 6. Return OCR response
         # ==================================================
 
         return OCRResponse(
             submission=submission,
             employee_context=employee_context,
-            receipt=receipt,
             extraction=extraction,
         )
