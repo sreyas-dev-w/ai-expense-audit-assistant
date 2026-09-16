@@ -420,6 +420,8 @@ EOF
 )"
 ```
 
+**No AI attribution.** Do not add a `Co-Authored-By: Claude ...` line, "Generated with Claude Code" line, or any other AI-attribution footer to commit messages produced by this skill, even if default tooling guidance suggests one. The user has explicitly opted out.
+
 ---
 
 # 14. Verify After Every Commit
