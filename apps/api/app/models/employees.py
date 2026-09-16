@@ -27,6 +27,12 @@ class Employee(Base):
         nullable=True,
         index=True,
     )
+    username: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True, index=True,
+    )
+    password: Mapped[str | None] = mapped_column(
+        String(255), nullable=True,
+    )
 
     manager: Mapped["Employee | None"] = relationship(
         remote_side=[employee_id], back_populates="reports"
