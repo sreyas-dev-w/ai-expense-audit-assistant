@@ -18,3 +18,13 @@ python-dotenv>=1.0.0
 
 # Async runtime support
 greenlet>=3.0.0
+
+# PDF ingestion
+pypdf>=6.0.0
+python-multipart>=0.0.9
+
+# Google Gemini (embeddings + structured LLM output)
+google-genai>=2.0.0
+
+# Agent orchestration
+langgraph>=1.2.0

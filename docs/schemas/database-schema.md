@@ -62,9 +62,22 @@ erDiagram
         String confidence_score
     }
 
+    policyDocuments{
+        Integer policy_id PK
+        String filename
+        String stored_path
+        String doc_hash
+        String policy_version
+        Integer chunk_count
+        Enum status
+        String error
+        DateTime created_at
+        DateTime updated_at
+    }
+
     policyChunking{
         Integer id PK
-        Integer policy_id
+        Integer policy_id FK
         String content
         JsonB metadata
         Vector embeddings
@@ -74,13 +87,13 @@ erDiagram
     projects ||--o{ employees : "assigns"
     employees ||--o{ claims : "submits"
     agentResponse ||--o{ claims : "has"
+    policyDocuments ||--o{ policyChunking : "chunks"
 ```
 
 ### note on `policy_id`
 
-`policy_chunking` references a policy source that is not modeled yet, so
-`policy_id` is a plain indexed integer without a foreign key. Add a FK once a
-`policy` table exists.
+`policy_chunking.policy_id` references `policy_documents.policy_id` (a policy source document), added via Alembic
+migration `26228978c7ca`.
 
 ## Type Mapping
 
@@ -109,7 +122,7 @@ The domain types above map to PostgreSQL types as follows:
 - `employees.employee_id ← claims.employee_id`: `ON DELETE CASCADE`.
 - `employees.employee_id ← claims.auditer_id`: the auditor assigned to the claim (nullable; `SET NULL`).
 - `claims.claim_id ← agent_response.claim_id`: one claim has many agent responses. `ON DELETE CASCADE`.
-- `policy_chunking.policy_id` is a plain indexed integer column from the source schema (no foreign key; the policy table does not exist yet).
+- `policy_chunking.policy_id` references `policy_documents.policy_id`, `ON DELETE CASCADE` (a policy source has many chunks).
 - `claims.project_code` is a plain indexed column from the source schema (no foreign key).
 
 ## Table Details
@@ -178,6 +191,23 @@ The domain types above map to PostgreSQL types as follows:
 | `notes` | TEXT | NULL |
 | `confidence_score` | NUMERIC(5,2) | NULL |
 
+### `policy_documents`
+
+A single ingested policy PDF and its ingestion state.
+
+| Column | Type | Constraints |
+|---|---|---|
+| `policy_id` | INTEGER + IDENTITY | PK |
+| `filename` | VARCHAR(512) | NOT NULL |
+| `stored_path` | VARCHAR(1024) | NOT NULL |
+| `doc_hash` | VARCHAR(64) | NOT NULL, unique, indexed (sha256 content hash for dedupe) |
+| `policy_version` | VARCHAR(64) | NULL |
+| `chunk_count` | INTEGER | NOT NULL, default `0` |
+| `status` | VARCHAR(32) | NOT NULL, default `completed` (`pending` / `completed` / `failed`) |
+| `error` | VARCHAR(1024) | NULL |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default `now()` |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default `now()`, on-update refreshed |
+
 ### `policy_chunking`
 
 Chunked policy documents with embeddings for semantic search.
@@ -185,7 +215,7 @@ Chunked policy documents with embeddings for semantic search.
 | Column | Type | Constraints |
 |---|---|---|
 | `id` | INTEGER + IDENTITY | PK |
-| `policy_id` | INTEGER | NOT NULL, indexed |
+| `policy_id` | INTEGER | NOT NULL, FK → `policy_documents.policy_id` (CASCADE), indexed |
 | `content` | TEXT | NOT NULL |
 | `metadata` | JSONB | NULL |
 | `embeddings` | `vector(1536)` | NULL, Gemini Embedding 2 (`gemini-embedding-2`) |

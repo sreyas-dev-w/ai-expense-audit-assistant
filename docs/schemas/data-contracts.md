@@ -42,6 +42,20 @@ Agent B
   `docs/schemas/database-schema.md`; models and Alembic migrations must match it exactly. These are distinct from
   public API schemas.
 
+## Policy Contracts
+
+Policy domain schemas are defined once in `apps/api/app/schemas/policy.py` and reused across the API, the policy
+RAG agent, and services:
+
+- API: `PolicyDocumentSummary`, `PolicyIngestResult`, `PolicySearchRequest`, `RetrievedPolicyChunk`,
+  `PolicySearchResponse` (ingestion/search endpoints in `app/api/policies.py`).
+- Agent input: `PolicyClaimContext` + `PolicyEvaluationRequest` — a discriminated union over
+  `FoodMealsPolicyEvaluation | TravelPolicyEvaluation | AccommodationPolicyEvaluation | OtherPolicyEvaluation`
+  that reuses the canonical category data models from `app/schemas/expense.py` (so agent and claim-extraction
+  contracts cannot drift).
+- Agent output: `PolicyAgentOutput` (decision, severity, violations/checks, references, confidence),
+  `PolicyAgentResult`, `PolicyAgentError`, `PolicyAgentStatus`.
+
 ## Outcome
 
 The system preserves structured stage outputs for auditability:
