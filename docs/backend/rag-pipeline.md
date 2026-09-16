@@ -54,3 +54,31 @@ for grounded reasoning are more important than raw similarity.
 
 Vector-related schema changes require an Alembic migration (see `docs/backend/technology-stack.md` for migration
 requirements).
+
+## Implemented Pipeline
+
+The ingestion + retrieval pipeline lives in `apps/api/app`:
+
+```text
+POST /api/v1/policies/documents        (app/api/policies.py)
+        ↓
+file_service.store_pdf                  → storage dump (POLICY_STORAGE_DIR)
+        ↓
+pdf_extraction_service.extract_pdf_text + chunking_service.chunk_policy_text
+        ↓
+embedding_service.GeminiEmbeddingProvider   (gemini-embedding-2, 1536-dim, external call)
+        ↓
+repositories/policy_repository.add_chunks    (single short transaction)
+        ↓
+POST /api/v1/policies/search           → rag_service.search (pgvector cosine, (1 - distance))
+```
+
+Persistence tables: `policy_documents` (one row per ingested PDF, `sha256` dedupe, forced re-ingest allowed) and
+`policy_chunking` (chunks with 1536-dim embeddings, HNSW cosine index). Both are documented in
+`docs/schemas/database-schema.md` and defined via Alembic migrations.
+
+Key rules enforced in code:
+
+- Embedding happens **before** the write transaction opens, so no long-lived transaction spans LLM calls.
+- Stored PDFs are cleaned up on re-ingest/delete/failed persistence; the dump directory is git-ignored.
+- Similarity thresholds filter low-confidence matches; retrieval relevance beats raw score (see policy agent).

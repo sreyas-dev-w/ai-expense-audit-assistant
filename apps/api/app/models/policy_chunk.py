@@ -1,8 +1,8 @@
 from typing import Any
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Index, Integer, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey, Index, Integer, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import JSONType, Base
 
@@ -22,11 +22,19 @@ class PolicyChunk(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    policy_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    policy_id: Mapped[int] = mapped_column(
+        ForeignKey("policy_documents.policy_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_: Mapped[dict[str, Any] | None] = mapped_column(
         "metadata", JSONType, nullable=True
     )
     embeddings: Mapped[list[float] | None] = mapped_column(
         Vector(EMBEDDING_DIMENSIONS), nullable=True
+    )
+
+    document: Mapped["PolicyDocument"] = relationship(
+        back_populates="chunks"
     )
