@@ -40,12 +40,18 @@ ACCOUNTS = {
 
 
 class EmployeeRepository:
+    """In-memory repository matching the async production interface."""
 
-    def get_employee(self, employee_id: str):
+    def __init__(self, session: object | None = None) -> None:
+        # Accept the production constructor argument so this repository can be
+        # substituted without changing OCRAgent. No session is needed in-memory.
+        self.session = session
+
+    async def get_employee(self, employee_id: str):
         return EMPLOYEES.get(employee_id)
 
-    def get_project(self, project_code: str):
+    async def get_project(self, project_code: str):
         return PROJECTS.get(project_code)
 
-    def get_account(self, account_id: str):
+    async def get_account(self, account_id: str):
         return ACCOUNTS.get(account_id)
