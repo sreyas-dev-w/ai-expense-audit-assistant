@@ -58,3 +58,20 @@ class ClaimPriority(str, enum.Enum):
     MEDIUM = "medium"
     HIGH = "high"
     URGENT = "urgent"
+
+
+class AIRunStatus(str, enum.Enum):
+    """Whether the AI reasoning pipeline has completed for a claim."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class AIDecision(str, enum.Enum):
+    """Recommendation produced by the AI reasoning pipeline."""
+
+    APPROVE = "approve"
+    REJECT = "reject"
+    REVIEW = "review"
