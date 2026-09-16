@@ -115,7 +115,15 @@ OTHERS
 Extract these fields:
 - is_receipt: bool (true if valid receipt)
 - receipt_no: receipt/reference/transaction number
-- expense_category: from document if identifiable, else null
+- expense_category: INFER from receipt content
+  * If explicitly visible in document → extract as-is (e.g. "OFFICE SUPPLIES", "MAINTENANCE")
+  * If NOT visible → INFER and format as "INFERRED_CATEGORY (OTHERS)"
+  Examples of inferred categories:
+    - Receipt for printer ink, pens, paper → "SUPPLIES (OTHERS)"
+    - Receipt for cleaning services, tools → "MAINTENANCE (OTHERS)"
+    - Receipt for books, training materials → "TRAINING (OTHERS)"
+    - Receipt for parking, tolls → "TRANSPORTATION (OTHERS)"
+    - Receipt for hotel tips, miscellaneous → "MISCELLANEOUS (OTHERS)"
 - merchant_name: vendor or provider name
 - expense_date: date in YYYY-MM-DD format
 - claim_amount: total amount charged (final total)
@@ -125,12 +133,20 @@ Extract these fields:
 - line_items: array of {description, amount}
 - additional_details: any other important information visible on receipt (e.g. notes, remarks, policy info), else null
 
-Preserve visible description text. Do NOT invent category or type.
+IMPORTANT FOR OTHERS:
+- expense_category must ALWAYS be filled (inferred if not visible)
+- Use "(OTHERS)" suffix ONLY for inferred categories
+- Use simple, clear category names (SUPPLIES, MAINTENANCE, TRAINING, etc.)
 
 
 IMPORTANT
 =========
-- The expense category is user-provided and fixed. Never override it.
+- The expense category input (FOOD_MEALS, TRAVEL, ACCOMMODATION, OTHERS) is user-provided and fixed. Never override it.
 - Return the structured JSON response exactly as specified above.
-- Set fields to null if not visibly present—never guess or calculate missing data.
+- INFERENCE RULES:
+  * FOOD_MEALS: Infer meal_type ONLY from line items. Extract number_of_people if visible, else null.
+  * TRAVEL: Extract all fields if visible, else null. Do NOT infer origin/destination/travel_class.
+  * ACCOMMODATION: Extract all fields if visible, else null. Do NOT infer.
+  * OTHERS: INFER expense_category from receipt content if not visible. Format as "CATEGORY (OTHERS)" for inferred.
+- For all other fields: Set to null if not visibly present. Never guess or calculate missing data.
 - Focus on accuracy over completeness.
