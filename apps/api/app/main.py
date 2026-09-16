@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.ocr_extraction import router as ocr_router
 from app.routers import health
 
+from app.api import health
+
 app = FastAPI(
     title="AI Expense Audit Assistant API",
     description="Backend API for the AI Expense Audit Assistant.",
