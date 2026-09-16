@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers.ocr_extraction import router as ocr_router
-from app.routers import health
+from app.routers import audits, auth, claims, dashboard, health, policies, uploads
 
 app = FastAPI(
     title="AI Expense Audit Assistant API",
@@ -17,4 +17,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(ocr_router)
-app.include_router(health.router, prefix="/api/v1", tags=["health"])
+for router in (
+    health.router,
+    auth.router,
+    uploads.router,
+    policies.router,
+    claims.router,
+    audits.router,
+    dashboard.router,
+):
+    app.include_router(router, prefix="/api/v1")

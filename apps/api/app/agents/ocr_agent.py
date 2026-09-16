@@ -1,6 +1,7 @@
 from datetime import date, datetime, timezone
 
-from api.tests.evaluation.test_employee_repository import EmployeeRepository
+# from api.tests.evaluation.test_employee_repository import EmployeeRepository
+from app.repositories.test_employee_repository import EmployeeRepository
 from app.schemas.extraction import (
     EmployeeContext,
     Extraction,
@@ -12,7 +13,6 @@ from app.schemas.extraction import (
     Submission,
 )
 from app.services.ocr_extraction_gemini_service import GeminiService
-
 
 class OCRAgent:
 
