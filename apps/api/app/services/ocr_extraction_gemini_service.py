@@ -1,12 +1,9 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-
-from app.prompts.ocr_extraction_prompt import (
-    RECEIPT_EXTRACTION_PROMPT,
-)
 
 from app.schemas.extraction import (
     FoodMealsExtraction,
@@ -14,6 +11,8 @@ from app.schemas.extraction import (
     AccommodationExtraction,
     OtherExtraction,
 )
+
+_PROMPT_FILE = Path(__file__).resolve().parents[1] / "prompts" / "ocr_extraction_prompt.txt"
 
 
 load_dotenv()
@@ -38,6 +37,10 @@ class GeminiService:
         )
 
         self.model = "gemini-3.6-flash"
+
+    def _load_prompt(self) -> str:
+        """Load OCR extraction prompt from text file"""
+        return _PROMPT_FILE.read_text()
 
     async def extract_receipt(
         self,
@@ -87,7 +90,7 @@ class GeminiService:
         # 3. Build category-aware prompt
         # ==================================================
 
-        prompt = RECEIPT_EXTRACTION_PROMPT.format(
+        prompt = self._load_prompt().format(
             expense_category=expense_category
         )
 

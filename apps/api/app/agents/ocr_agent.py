@@ -1,10 +1,12 @@
 from datetime import date, datetime, timezone
+from typing import TypedDict, Optional
 
-# from api.tests.evaluation.test_employee_repository import EmployeeRepository
-from app.repositories.test_employee_repository import EmployeeRepository
+from langgraph.graph import StateGraph, START, END
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.tests.evaluation.test_employee_repository import EmployeeRepository
 from app.schemas.extraction import (
     EmployeeContext,
-    Extraction,
     FoodMealsDetails,
     TravelDetails,
     AccommodationDetails,
@@ -14,11 +16,37 @@ from app.schemas.extraction import (
 )
 from app.services.ocr_extraction_gemini_service import GeminiService
 
+
 class OCRAgent:
 
-    def __init__(self):
-        self.employee_repository = EmployeeRepository()
+    def __init__(self, session: AsyncSession = None):
+        self.session = session
+        self.employee_repository = EmployeeRepository(session)
         self.gemini_service = GeminiService()
+        self.graph = self._build_graph()
+
+    def _build_graph(self):
+        """Build the LangGraph workflow"""
+        workflow = StateGraph(OCRState)
+
+        workflow.add_node("validate_input", self._validate_input)
+        workflow.add_node("fetch_employee", self._fetch_employee)
+        workflow.add_node("fetch_project", self._fetch_project)
+        workflow.add_node("validate_category_specific", self._validate_category_specific)
+        workflow.add_node("create_submission", self._create_submission)
+        workflow.add_node("extract_receipt", self._extract_receipt)
+        workflow.add_node("create_response", self._create_response)
+
+        workflow.add_edge(START, "validate_input")
+        workflow.add_edge("validate_input", "fetch_employee")
+        workflow.add_edge("fetch_employee", "fetch_project")
+        workflow.add_edge("fetch_project", "validate_category_specific")
+        workflow.add_edge("validate_category_specific", "create_submission")
+        workflow.add_edge("create_submission", "extract_receipt")
+        workflow.add_edge("extract_receipt", "create_response")
+        workflow.add_edge("create_response", END)
+
+        return workflow.compile()
 
     async def process(
         self,
@@ -53,146 +81,182 @@ class OCRAgent:
         receipt_bytes: bytes | None = None,
         mime_type: str | None = None,
     ) -> OCRResponse:
+        """Process OCR extraction through LangGraph workflow"""
 
-        # ==================================================
-        # 0. COMMON VALIDATION
-        # ==================================================
+        initial_state: OCRState = {
+            "employee_id": employee_id,
+            "expense_category": expense_category,
+            "spend_amount": spend_amount,
+            "business_purpose": business_purpose,
+            "meal_type": meal_type,
+            "number_of_people": number_of_people,
+            "travel_type": travel_type,
+            "origin": origin,
+            "destination": destination,
+            "travel_class": travel_class,
+            "location": location,
+            "check_in_date": check_in_date,
+            "check_out_date": check_out_date,
+            "number_of_days": number_of_days,
+            "room_type": room_type,
+            "expense_type": expense_type,
+            "additional_details": additional_details,
+            "receipt_bytes": receipt_bytes,
+            "mime_type": mime_type,
+        }
 
+        result = await self.graph.ainvoke(initial_state)
+        return result["response"]
+
+    async def _validate_input(self, state: OCRState) -> OCRState:
+        """Validate common input parameters"""
+
+        employee_id = state.get("employee_id")
         if employee_id is None:
             print("[OCR VALIDATION ERROR] Employee ID is required.")
             raise ValueError("Employee ID is required.")
 
         employee_id = employee_id.strip()
-
         if not employee_id:
             print("[OCR VALIDATION ERROR] Employee ID is required.")
             raise ValueError("Employee ID is required.")
 
-        # --------------------------------------------------
-        # Expense category
-        # --------------------------------------------------
+        state["employee_id"] = employee_id
 
+        expense_category = state.get("expense_category")
         if expense_category is None:
-            print(
-                "[OCR VALIDATION ERROR] "
-                "Expense category is required."
-            )
+            print("[OCR VALIDATION ERROR] Expense category is required.")
             raise ValueError("Expense category is required.")
 
         expense_category = expense_category.strip().upper()
 
-        allowed_categories = {
-            "FOOD_MEALS",
-            "TRAVEL",
-            "ACCOMMODATION",
-            "OTHERS",
-        }
-
+        allowed_categories = {"FOOD_MEALS", "TRAVEL", "ACCOMMODATION", "OTHERS"}
         if expense_category not in allowed_categories:
-            print(
-                f"[OCR VALIDATION ERROR] "
-                f"Invalid expense category: {expense_category}"
-            )
-
+            print(f"[OCR VALIDATION ERROR] Invalid expense category: {expense_category}")
             raise ValueError(
                 "Invalid expense category. "
                 "Allowed categories are "
                 "FOOD_MEALS, TRAVEL, ACCOMMODATION, OTHERS."
             )
 
-        # --------------------------------------------------
-        # Receipt
-        # --------------------------------------------------
+        state["expense_category"] = expense_category
 
+        receipt_bytes = state.get("receipt_bytes")
         if not receipt_bytes:
-            print(
-                "[OCR VALIDATION ERROR] "
-                "Receipt file is required."
-            )
+            print("[OCR VALIDATION ERROR] Receipt file is required.")
             raise ValueError("Receipt file is required.")
 
-        # --------------------------------------------------
-        # MIME type
-        # --------------------------------------------------
-
-        allowed_mime_types = {
-            "image/jpeg",
-            "image/png",
-            "application/pdf",
-        }
+        mime_type = state.get("mime_type")
+        allowed_mime_types = {"image/jpeg", "image/png", "application/pdf"}
 
         if mime_type is None:
-            print(
-                "[OCR VALIDATION ERROR] "
-                "Receipt format is required."
-            )
+            print("[OCR VALIDATION ERROR] Receipt format is required.")
             raise ValueError("Receipt format is required.")
 
         if mime_type not in allowed_mime_types:
-            print(
-                f"[OCR VALIDATION ERROR] "
-                f"Unsupported receipt format: {mime_type}."
-            )
-
+            print(f"[OCR VALIDATION ERROR] Unsupported receipt format: {mime_type}.")
             raise ValueError(
                 f"Unsupported receipt format: {mime_type}. "
                 "Supported formats are PNG, JPEG, and PDF."
             )
 
         print("[OCR] Common input validation passed.")
+        return state
 
-        # ==================================================
-        # 1. CATEGORY-SPECIFIC VALIDATION
-        # ==================================================
+    async def _fetch_employee(self, state: OCRState) -> OCRState:
+        """Fetch employee from database"""
 
-        # ==================================================
-        # FOOD_MEALS
-        # ==================================================
+        employee_id = state["employee_id"]
+        employee = await self.employee_repository.get_employee(employee_id)
+
+        if employee is None:
+            print(f"[OCR ERROR] Employee ID '{employee_id}' was not found.")
+            raise ValueError(f"Employee ID '{employee_id}' does not exist.")
+
+        print(f"[OCR] Employee '{employee_id}' found.")
+        state["employee"] = employee
+        return state
+
+    async def _fetch_project(self, state: OCRState) -> OCRState:
+        """Fetch project and create employee context"""
+
+        employee = state["employee"]
+        employee_id = state["employee_id"]
+
+        project = None
+        account_id = None
+
+        if employee.get("project_code"):
+            project = await self.employee_repository.get_project(employee["project_code"])
+
+        if project:
+            account_id = project.get("account_id")
+            print(f"[OCR] Project '{employee['project_code']}' found.")
+        else:
+            print(f"[OCR WARNING] Project '{employee['project_code']}' was not found.")
+
+        state["project"] = project
+
+        employee_context = EmployeeContext(
+            employee_id=employee_id,
+            found=True,
+            employee_name=employee["employee_name"],
+            job_level=employee["job_level"],
+            manager_id=employee["manager_id"],
+            project_code=employee["project_code"],
+            account_id=account_id,
+        )
+
+        state["employee_context"] = employee_context
+        return state
+
+    async def _validate_category_specific(self, state: OCRState) -> OCRState:
+        """Validate category-specific parameters"""
+
+        expense_category = state["expense_category"]
+        spend_amount = state.get("spend_amount")
+        meal_type = state.get("meal_type")
+        number_of_people = state.get("number_of_people")
+        travel_type = state.get("travel_type")
+        origin = state.get("origin")
+        destination = state.get("destination")
+        travel_class = state.get("travel_class")
+        location = state.get("location")
+        check_in_date = state.get("check_in_date")
+        check_out_date = state.get("check_out_date")
+        number_of_days = state.get("number_of_days")
+        room_type = state.get("room_type")
+        expense_type = state.get("expense_type")
+        additional_details = state.get("additional_details")
+        business_purpose = state.get("business_purpose")
+
+        details = None
 
         if expense_category == "FOOD_MEALS":
-
             if spend_amount is None:
-                raise ValueError(
-                    "Spend amount is required for FOOD_MEALS."
-                )
+                raise ValueError("Spend amount is required for FOOD_MEALS.")
 
             try:
                 spend_amount = float(spend_amount)
             except (TypeError, ValueError):
-                raise ValueError(
-                    "Spend amount must be a valid number."
-                )
+                raise ValueError("Spend amount must be a valid number.")
 
             if spend_amount <= 0:
-                raise ValueError(
-                    "Spend amount must be greater than 0."
-                )
+                raise ValueError("Spend amount must be greater than 0.")
 
             if meal_type is None:
-                raise ValueError(
-                    "Meal type is required for FOOD_MEALS."
-                )
+                raise ValueError("Meal type is required for FOOD_MEALS.")
 
             meal_type = meal_type.strip().upper()
 
-            if meal_type not in {
-                "VEG",
-                "NON_VEG",
-                "MIXED",
-            }:
-                raise ValueError(
-                    "Meal type must be VEG, NON_VEG, or MIXED."
-                )
+            if meal_type not in {"VEG", "NON_VEG", "MIXED"}:
+                raise ValueError("Meal type must be VEG, NON_VEG, or MIXED.")
 
             if number_of_people is None:
-                raise ValueError(
-                    "Number of people is required for FOOD_MEALS."
-                )
+                raise ValueError("Number of people is required for FOOD_MEALS.")
 
             if number_of_people <= 0:
-                raise ValueError(
-                    "Number of people must be greater than 0."
-                )
+                raise ValueError("Number of people must be greater than 0.")
 
             details = FoodMealsDetails(
                 expense_category="FOOD_MEALS",
@@ -202,72 +266,39 @@ class OCRAgent:
                 number_of_people=number_of_people,
             )
 
-        # ==================================================
-        # TRAVEL
-        # ==================================================
-
         elif expense_category == "TRAVEL":
-
             if spend_amount is None:
-                raise ValueError(
-                    "Spend amount is required for TRAVEL."
-                )
+                raise ValueError("Spend amount is required for TRAVEL.")
 
             try:
                 spend_amount = float(spend_amount)
             except (TypeError, ValueError):
-                raise ValueError(
-                    "Spend amount must be a valid number."
-                )
+                raise ValueError("Spend amount must be a valid number.")
 
             if spend_amount <= 0:
-                raise ValueError(
-                    "Spend amount must be greater than 0."
-                )
+                raise ValueError("Spend amount must be greater than 0.")
 
             if not travel_type:
-                raise ValueError(
-                    "Travel type is required for TRAVEL."
-                )
+                raise ValueError("Travel type is required for TRAVEL.")
 
             travel_type = travel_type.strip().upper()
 
-            if travel_type not in {
-                "FLIGHT",
-                "TRAIN",
-                "BUS",
-                "CAR",
-                "BIKE",
-            }:
-                raise ValueError(
-                    "Invalid travel type."
-                )
+            if travel_type not in {"FLIGHT", "TRAIN", "BUS", "CAR", "BIKE"}:
+                raise ValueError("Invalid travel type.")
 
             if not origin or not origin.strip():
-                raise ValueError(
-                    "Origin is required for TRAVEL."
-                )
+                raise ValueError("Origin is required for TRAVEL.")
 
             if not destination or not destination.strip():
-                raise ValueError(
-                    "Destination is required for TRAVEL."
-                )
+                raise ValueError("Destination is required for TRAVEL.")
 
             if not travel_class:
-                raise ValueError(
-                    "Travel class is required for TRAVEL."
-                )
+                raise ValueError("Travel class is required for TRAVEL.")
 
             travel_class = travel_class.strip().upper()
 
-            if travel_class not in {
-                "BUSINESS_CLASS",
-                "ECONOMY_CLASS",
-            }:
-                raise ValueError(
-                    "Travel class must be BUSINESS_CLASS "
-                    "or ECONOMY_CLASS."
-                )
+            if travel_class not in {"BUSINESS_CLASS", "ECONOMY_CLASS"}:
+                raise ValueError("Travel class must be BUSINESS_CLASS or ECONOMY_CLASS.")
 
             details = TravelDetails(
                 expense_category="TRAVEL",
@@ -279,56 +310,32 @@ class OCRAgent:
                 business_purpose=business_purpose,
             )
 
-        # ==================================================
-        # ACCOMMODATION
-        # ==================================================
-
         elif expense_category == "ACCOMMODATION":
-
             if spend_amount is None:
-                raise ValueError(
-                    "Spend amount is required for ACCOMMODATION."
-                )
+                raise ValueError("Spend amount is required for ACCOMMODATION.")
 
             try:
                 spend_amount = float(spend_amount)
             except (TypeError, ValueError):
-                raise ValueError(
-                    "Spend amount must be a valid number."
-                )
+                raise ValueError("Spend amount must be a valid number.")
 
             if spend_amount <= 0:
-                raise ValueError(
-                    "Spend amount must be greater than 0."
-                )
+                raise ValueError("Spend amount must be greater than 0.")
 
             if not location or not location.strip():
-                raise ValueError(
-                    "Location is required for ACCOMMODATION."
-                )
+                raise ValueError("Location is required for ACCOMMODATION.")
 
             if check_in_date is None:
-                raise ValueError(
-                    "Check-in date is required."
-                )
+                raise ValueError("Check-in date is required.")
 
             if check_out_date is None:
-                raise ValueError(
-                    "Check-out date is required."
-                )
+                raise ValueError("Check-out date is required.")
 
             if check_out_date <= check_in_date:
-                raise ValueError(
-                    "Check-out date must be after check-in date."
-                )
+                raise ValueError("Check-out date must be after check-in date.")
 
-            # Calculate number of days from dates.
-            calculated_days = (
-                check_out_date - check_in_date
-            ).days
+            calculated_days = (check_out_date - check_in_date).days
 
-            # If frontend sends number_of_days,
-            # validate it against the calculated value.
             if number_of_days is not None:
                 if number_of_days != calculated_days:
                     raise ValueError(
@@ -339,9 +346,7 @@ class OCRAgent:
             number_of_days = calculated_days
 
             if not room_type or not room_type.strip():
-                raise ValueError(
-                    "Room type is required for ACCOMMODATION."
-                )
+                raise ValueError("Room type is required for ACCOMMODATION.")
 
             details = AccommodationDetails(
                 expense_category="ACCOMMODATION",
@@ -354,33 +359,20 @@ class OCRAgent:
                 room_type=room_type.strip(),
             )
 
-        # ==================================================
-        # OTHERS
-        # ==================================================
-
         else:
-
             if spend_amount is None:
-                raise ValueError(
-                    "Spend amount is required for OTHERS."
-                )
+                raise ValueError("Spend amount is required for OTHERS.")
 
             try:
                 spend_amount = float(spend_amount)
             except (TypeError, ValueError):
-                raise ValueError(
-                    "Spend amount must be a valid number."
-                )
+                raise ValueError("Spend amount must be a valid number.")
 
             if spend_amount <= 0:
-                raise ValueError(
-                    "Spend amount must be greater than 0."
-                )
+                raise ValueError("Spend amount must be greater than 0.")
 
             if not expense_type or not expense_type.strip():
-                raise ValueError(
-                    "Expense type is required for OTHERS."
-                )
+                raise ValueError("Expense type is required for OTHERS.")
 
             details = OtherDetails(
                 expense_category="OTHERS",
@@ -390,89 +382,32 @@ class OCRAgent:
                 additional_details=additional_details,
             )
 
-        print(
-            f"[OCR] Category-specific validation passed "
-            f"for '{expense_category}'."
-        )
+        print(f"[OCR] Category-specific validation passed for '{expense_category}'.")
+        state["details"] = details
+        return state
 
-        # ==================================================
-        # 2. VALIDATE EMPLOYEE
-        # ==================================================
-
-        employee = self.employee_repository.get_employee(
-            employee_id
-        )
-
-        if employee is None:
-            print(
-                f"[OCR ERROR] Employee ID '{employee_id}' "
-                "was not found."
-            )
-
-            raise ValueError(
-                f"Employee ID '{employee_id}' does not exist."
-            )
-
-        print(
-            f"[OCR] Employee '{employee_id}' found."
-        )
-
-        # ==================================================
-        # 3. FETCH PROJECT
-        # ==================================================
-
-        project = self.employee_repository.get_project(
-            employee["project_code"]
-        )
-
-        account_id = None
-
-        if project:
-            account_id = project["account_id"]
-
-            print(
-                f"[OCR] Project '{employee['project_code']}' found."
-            )
-
-        else:
-            print(
-                f"[OCR WARNING] Project "
-                f"'{employee['project_code']}' was not found."
-            )
-
-        # ==================================================
-        # 4. EMPLOYEE CONTEXT
-        # ==================================================
-
-        employee_context = EmployeeContext(
-            employee_id=employee_id,
-            found=True,
-            employee_name=employee["employee_name"],
-            job_level=employee["job_level"],
-            manager_id=employee["manager_id"],
-            project_code=employee["project_code"],
-            account_id=account_id,
-        )
-
-        # ==================================================
-        # 5. SUBMISSION
-        # ==================================================
+    async def _create_submission(self, state: OCRState) -> OCRState:
+        """Create submission object"""
 
         submission = Submission(
-            employee_id=employee_id,
-            expense_category=expense_category,
-            details=details,
+            employee_id=state["employee_id"],
+            expense_category=state["expense_category"],
+            details=state["details"],
             submitted_at=datetime.now(timezone.utc),
             receipt_provided=True,
         )
 
-        print(
-            "[OCR] Submission metadata created."
-        )
+        print("[OCR] Submission metadata created.")
+        state["submission"] = submission
+        return state
 
-        # ==================================================
-        # 6. GEMINI RECEIPT EXTRACTION
-        # ==================================================
+    async def _extract_receipt(self, state: OCRState) -> OCRState:
+        """Extract receipt using Gemini"""
+
+        expense_category = state["expense_category"]
+        employee_id = state["employee_id"]
+        receipt_bytes = state["receipt_bytes"]
+        mime_type = state["mime_type"]
 
         print(
             f"[OCR] Sending {expense_category} receipt "
@@ -490,12 +425,14 @@ class OCRAgent:
             f"for employee '{employee_id}'."
         )
 
-        # ==================================================
-        # 7. FINAL RESPONSE
-        # ==================================================
+        state["extraction"] = extraction
+        return state
 
-        return OCRResponse(
-            submission=submission,
-            employee_context=employee_context,
-            extraction=extraction,
+    async def _create_response(self, state: OCRState) -> OCRState:
+        """Create final OCR response"""
+        state["response"] = OCRResponse(
+            submission=state["submission"],
+            employee_context=state["employee_context"],
+            extraction=state["extraction"],
         )
+        return state
