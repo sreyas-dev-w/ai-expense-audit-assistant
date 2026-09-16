@@ -1,5 +1,9 @@
 fastapi==0.141.1
 uvicorn[standard]==0.52.4
+python-multipart
+pydantic
+google-genai
+python-dotenv
 
 # Database
 sqlalchemy>=2.0.30
