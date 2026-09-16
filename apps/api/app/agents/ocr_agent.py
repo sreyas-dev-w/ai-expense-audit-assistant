@@ -4,7 +4,9 @@ from typing import TypedDict, Optional
 from langgraph.graph import StateGraph, START, END
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.tests.evaluation.test_employee_repository import EmployeeRepository
+
+# from app.repositories.employee_repository import EmployeeRepository
+from app.repositories.test_employee_repository import EmployeeRepository
 from app.schemas.extraction import (
     EmployeeContext,
     FoodMealsDetails,
@@ -15,6 +17,36 @@ from app.schemas.extraction import (
     Submission,
 )
 from app.services.ocr_extraction_gemini_service import GeminiService
+
+class OCRState(TypedDict, total=False):
+    """State object for the OCR workflow"""
+
+    employee_id: str
+    expense_category: str
+    spend_amount: Optional[float]
+    business_purpose: Optional[str]
+    meal_type: Optional[str]
+    number_of_people: Optional[int]
+    travel_type: Optional[str]
+    origin: Optional[str]
+    destination: Optional[str]
+    travel_class: Optional[str]
+    location: Optional[str]
+    check_in_date: Optional[date]
+    check_out_date: Optional[date]
+    number_of_days: Optional[int]
+    room_type: Optional[str]
+    expense_type: Optional[str]
+    additional_details: Optional[str]
+    receipt_bytes: Optional[bytes]
+    mime_type: Optional[str]
+
+    employee: Optional[dict]
+    project: Optional[dict]
+    employee_context: Optional[EmployeeContext]
+    submission: Optional[Submission]
+    extraction: Optional[dict]
+    details: Optional[dict]
 
 
 class OCRAgent:
