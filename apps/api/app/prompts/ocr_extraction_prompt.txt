@@ -55,9 +55,17 @@ Extract these fields:
 - currency: currency code (e.g. USD, INR, EUR)
 - payment_status: PAID / UNPAID / PENDING / null
 - line_items: array of {description, amount}
-- meal_type: extract from receipt if visible (VEG / NON_VEG / MIXED), else null
+- meal_type: INFER from line items (VEG / NON_VEG / MIXED)
+  * If ALL items are vegetarian → VEG
+  * If ALL items are non-vegetarian → NON_VEG
+  * If MIX of vegetarian and non-vegetarian items → MIXED
+  * If unclear or insufficient item data → null
+- number_of_people: extract if explicitly shown on receipt (e.g. "Party of 4", "2 pax"), else null
 
-Do NOT infer meal type, number of people, or vegetarian status.
+Example inference:
+- Items: "Biryani", "Paneer Tikka", "Naan" → meal_type: VEG
+- Items: "Chicken Biryani", "Mutton Curry", "Bread" → meal_type: NON_VEG
+- Items: "Biryani", "Chicken Curry", "Salad" → meal_type: MIXED
 
 
 TRAVEL
@@ -66,15 +74,18 @@ Extract these fields:
 - is_receipt: bool (true if valid receipt)
 - receipt_no: ticket/booking/reference/PNR number
 - merchant_name: airline, railway, bus, rental company, or transport provider
-- expense_date: date of travel in YYYY-MM-DD format
+- expense_date: date of travel in YYYY-MM-DD format (if shown on receipt)
 - claim_amount: total amount charged (final total)
 - tax_amount: tax if separately shown, else null
 - currency: currency code (e.g. USD, INR, EUR)
 - payment_status: PAID / UNPAID / PENDING / null
 - line_items: array of {description, amount}
-- mode_of_transportation: extract if visible (e.g. FLIGHT, TRAIN, BUS, CAR, BIKE), else null
+- mode_of_transportation: extract if visible (FLIGHT / TRAIN / BUS / CAR / BIKE), else null
+- origin: departure location/city, if visible on receipt, else null
+- destination: arrival location/city, if visible on receipt, else null
+- travel_class: ticket class if visible (e.g. ECONOMY, BUSINESS, FIRST), else null
 
-Do NOT infer origin, destination, travel class, or dates beyond what's shown.
+Extract ONLY what is explicitly shown. Do not infer.
 
 
 ACCOMMODATION
@@ -83,14 +94,20 @@ Extract these fields:
 - is_receipt: bool (true if valid receipt)
 - receipt_no: booking/reservation/confirmation number
 - merchant_name: hotel or accommodation provider name
-- expense_date: check-in date in YYYY-MM-DD format, if visible
+- expense_date: check-in date in YYYY-MM-DD format, if visible else null
 - claim_amount: total amount charged (final total)
 - tax_amount: tax if separately shown, else null
 - currency: currency code (e.g. USD, INR, EUR)
 - payment_status: PAID / UNPAID / PENDING / null
 - line_items: array of {description, amount}
+- location: hotel location/city, if visible else null
+- check_in: check-in date in YYYY-MM-DD format, if visible else null
+- check_out: check-out date in YYYY-MM-DD format, if visible else null
+- number_of_nights: number of nights if visible, else null
+- no_of_rooms: number of rooms if visible, else null
+- room_type: room category if visible (e.g. SINGLE, DOUBLE, SUITE), else null
 
-Do NOT infer check-out date, room type, or number of nights.
+Extract ONLY what is explicitly shown. Do not infer or calculate.
 
 
 OTHERS
@@ -106,6 +123,7 @@ Extract these fields:
 - currency: currency code (e.g. USD, INR, EUR)
 - payment_status: PAID / UNPAID / PENDING / null
 - line_items: array of {description, amount}
+- additional_details: any other important information visible on receipt (e.g. notes, remarks, policy info), else null
 
 Preserve visible description text. Do NOT invent category or type.
 
