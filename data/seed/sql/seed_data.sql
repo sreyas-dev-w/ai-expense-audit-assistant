@@ -60,51 +60,52 @@ ON CONFLICT (project_code) DO NOTHING;
 --    NULL and populated, project_code NULL and populated. Inserted
 --    top-down (org-chart order) so every manager_id already exists
 --    by the time its report row is inserted.
+--    Dummy login: username = lower(employee_id), password = 'password@123'
 -- ---------------------------------------------------------------------
-INSERT INTO employees (employee_id, employee_name, job_level, is_manager, manager_id, project_code) VALUES
+INSERT INTO employees (employee_id, employee_name, job_level, is_manager, manager_id, project_code, username, password) VALUES
 -- L6: top of hierarchy, no manager
-('EMP001', 'Rajesh Iyer',        'L6', TRUE,  NULL,     NULL),      -- Delivery Head
-('EMP002', 'Meera Krishnan',     'L6', FALSE, NULL,     NULL),      -- Chief Architect (advisor, unassigned)
+('EMP001', 'Rajesh Iyer',        'L6', TRUE,  NULL,     NULL,     'emp001', 'password@123'),      -- Delivery Head
+('EMP002', 'Meera Krishnan',     'L6', FALSE, NULL,     NULL,     'emp002', 'password@123'),      -- Chief Architect (advisor, unassigned)
 
 -- L5: Program Directors, oversee an account's projects (not tied to one)
-('EMP003', 'Arvind Menon',       'L5', TRUE,  'EMP001', NULL),
-('EMP004', 'Sunita Rao',         'L5', TRUE,  'EMP001', NULL),
-('EMP005', 'Vikram Nair',        'L5', TRUE,  'EMP001', NULL),
+('EMP003', 'Arvind Menon',       'L5', TRUE,  'EMP001', NULL,     'emp003', 'password@123'),
+('EMP004', 'Sunita Rao',         'L5', TRUE,  'EMP001', NULL,     'emp004', 'password@123'),
+('EMP005', 'Vikram Nair',        'L5', TRUE,  'EMP001', NULL,     'emp005', 'password@123'),
 
 -- L4: Project Managers
-('EMP006', 'Anita Desai',        'L4', TRUE,  'EMP003', 'PRJ001'),
-('EMP007', 'Rohit Sharma',       'L4', TRUE,  'EMP003', 'PRJ002'),
-('EMP008', 'Kavya Pillai',       'L4', TRUE,  'EMP003', 'PRJ004'),
-('EMP009', 'Deepak Verma',       'L4', TRUE,  'EMP004', 'PRJ006'),
-('EMP010', 'Priya Subramaniam',  'L4', TRUE,  'EMP004', 'PRJ008'),
-('EMP011', 'Manoj Kumar',        'L4', TRUE,  'EMP005', 'PRJ010'),
-('EMP012', 'Lakshmi Narayan',    'L4', TRUE,  'EMP005', 'PRJ012'),
+('EMP006', 'Anita Desai',        'L4', TRUE,  'EMP003', 'PRJ001', 'emp006', 'password@123'),
+('EMP007', 'Rohit Sharma',       'L4', TRUE,  'EMP003', 'PRJ002', 'emp007', 'password@123'),
+('EMP008', 'Kavya Pillai',       'L4', TRUE,  'EMP003', 'PRJ004', 'emp008', 'password@123'),
+('EMP009', 'Deepak Verma',       'L4', TRUE,  'EMP004', 'PRJ006', 'emp009', 'password@123'),
+('EMP010', 'Priya Subramaniam',  'L4', TRUE,  'EMP004', 'PRJ008', 'emp010', 'password@123'),
+('EMP011', 'Manoj Kumar',        'L4', TRUE,  'EMP005', 'PRJ010', 'emp011', 'password@123'),
+('EMP012', 'Lakshmi Narayan',    'L4', TRUE,  'EMP005', 'PRJ012', 'emp012', 'password@123'),
 
 -- L3: Team Leads / senior ICs
-('EMP013', 'Suresh Babu',        'L3', TRUE,  'EMP006', 'PRJ001'),
-('EMP014', 'Divya Chandran',     'L3', FALSE, 'EMP007', 'PRJ002'),
-('EMP015', 'Karthik Raghavan',   'L3', TRUE,  'EMP008', 'PRJ004'),
-('EMP016', 'Nandini Rajan',      'L3', FALSE, 'EMP009', 'PRJ006'),
-('EMP017', 'Faisal Ahmed',       'L3', TRUE,  'EMP010', 'PRJ008'),
-('EMP018', 'Geetha Vijay',       'L3', FALSE, 'EMP011', 'PRJ010'),
-('EMP019', 'Harish Chandra',     'L3', TRUE,  'EMP012', 'PRJ012'),
-('EMP022', 'Naveen Krishnan',    'L3', TRUE,  'EMP008', 'PRJ005'),
-('EMP023', 'Ramya Iyer',         'L3', TRUE,  'EMP009', 'PRJ007'),
-('EMP025', 'Pooja Reddy',        'L3', TRUE,  'EMP011', 'PRJ011'),
-('EMP026', 'Arjun Menon',        'L3', TRUE,  'EMP012', 'PRJ013'),
-('EMP027', 'Bhavana Nair',       'L3', TRUE,  'EMP012', 'PRJ014'),
+('EMP013', 'Suresh Babu',        'L3', TRUE,  'EMP006', 'PRJ001', 'emp013', 'password@123'),
+('EMP014', 'Divya Chandran',     'L3', FALSE, 'EMP007', 'PRJ002', 'emp014', 'password@123'),
+('EMP015', 'Karthik Raghavan',   'L3', TRUE,  'EMP008', 'PRJ004', 'emp015', 'password@123'),
+('EMP016', 'Nandini Rajan',      'L3', FALSE, 'EMP009', 'PRJ006', 'emp016', 'password@123'),
+('EMP017', 'Faisal Ahmed',       'L3', TRUE,  'EMP010', 'PRJ008', 'emp017', 'password@123'),
+('EMP018', 'Geetha Vijay',       'L3', FALSE, 'EMP011', 'PRJ010', 'emp018', 'password@123'),
+('EMP019', 'Harish Chandra',     'L3', TRUE,  'EMP012', 'PRJ012', 'emp019', 'password@123'),
+('EMP022', 'Naveen Krishnan',    'L3', TRUE,  'EMP008', 'PRJ005', 'emp022', 'password@123'),
+('EMP023', 'Ramya Iyer',         'L3', TRUE,  'EMP009', 'PRJ007', 'emp023', 'password@123'),
+('EMP025', 'Pooja Reddy',        'L3', TRUE,  'EMP011', 'PRJ011', 'emp025', 'password@123'),
+('EMP026', 'Arjun Menon',        'L3', TRUE,  'EMP012', 'PRJ013', 'emp026', 'password@123'),
+('EMP027', 'Bhavana Nair',       'L3', TRUE,  'EMP012', 'PRJ014', 'emp027', 'password@123'),
 
 -- L2: mid-level
-('EMP020', 'Swathi Menon',       'L2', FALSE, 'EMP013', 'PRJ001'),
-('EMP021', 'Aditya Rao',         'L2', FALSE, 'EMP006', 'PRJ003'),  -- non-manager leading PRJ003
-('EMP024', 'Sandeep Joshi',      'L2', TRUE,  'EMP004', 'PRJ009'),  -- matrix report, skips L4/L3
-('EMP032', 'Ferdinand D''Souza', 'L2', FALSE, NULL,     'PRJ015'),  -- contractor: no manager, has a project
+('EMP020', 'Swathi Menon',       'L2', FALSE, 'EMP013', 'PRJ001', 'emp020', 'password@123'),
+('EMP021', 'Aditya Rao',         'L2', FALSE, 'EMP006', 'PRJ003', 'emp021', 'password@123'),  -- non-manager leading PRJ003
+('EMP024', 'Sandeep Joshi',      'L2', TRUE,  'EMP004', 'PRJ009', 'emp024', 'password@123'),  -- matrix report, skips L4/L3
+('EMP032', 'Ferdinand D''Souza', 'L2', FALSE, NULL,     'PRJ015', 'emp032', 'password@123'),  -- contractor: no manager, has a project
 
 -- L1: junior
-('EMP028', 'Vishal Kumar',       'L1', FALSE, 'EMP020', 'PRJ001'),
-('EMP029', 'Anjali Pillai',      'L1', FALSE, 'EMP014', 'PRJ002'),
-('EMP030', 'Kiran Babu',         'L1', FALSE, 'EMP015', 'PRJ004'),
-('EMP031', 'Sneha Kapoor',       'L1', FALSE, 'EMP003', NULL)       -- bench, awaiting allocation
+('EMP028', 'Vishal Kumar',       'L1', FALSE, 'EMP020', 'PRJ001', 'emp028', 'password@123'),
+('EMP029', 'Anjali Pillai',      'L1', FALSE, 'EMP014', 'PRJ002', 'emp029', 'password@123'),
+('EMP030', 'Kiran Babu',         'L1', FALSE, 'EMP015', 'PRJ004', 'emp030', 'password@123'),
+('EMP031', 'Sneha Kapoor',       'L1', FALSE, 'EMP003', NULL,     'emp031', 'password@123')       -- bench, awaiting allocation
 ON CONFLICT (employee_id) DO NOTHING;
 
 -- ---------------------------------------------------------------------
