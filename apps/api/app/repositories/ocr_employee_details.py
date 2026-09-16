@@ -6,23 +6,13 @@ from app.models.projects import Project
 from app.models.accounts import Account
 
 
-class EmployeeRepository:
-    """
-    Repository for employee data fetched from Neon DB.
-    Replaces the hardcoded test data with live database queries.
-    """
+class OCREmployeeDetailsRepository:
 
-    def __init__(self, session: AsyncSession = None):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
     async def get_employee(self, employee_id: str):
-        """
-        Fetch employee from database.
-        Returns a dictionary with employee details.
-        """
-        if not self.session:
-            return None
-
+        """Fetch employee from database"""
         query = select(Employee).where(Employee.employee_id == employee_id)
         result = await self.session.execute(query)
         employee = result.scalar_one_or_none()
@@ -39,13 +29,7 @@ class EmployeeRepository:
         }
 
     async def get_project(self, project_code: str):
-        """
-        Fetch project from database.
-        Returns a dictionary with project details.
-        """
-        if not self.session:
-            return None
-
+        """Fetch project from database"""
         query = select(Project).where(Project.project_code == project_code)
         result = await self.session.execute(query)
         project = result.scalar_one_or_none()
@@ -61,13 +45,7 @@ class EmployeeRepository:
         }
 
     async def get_account(self, account_id: str):
-        """
-        Fetch account from database.
-        Returns a dictionary with account details.
-        """
-        if not self.session:
-            return None
-
+        """Fetch account from database"""
         query = select(Account).where(Account.account_id == account_id)
         result = await self.session.execute(query)
         account = result.scalar_one_or_none()

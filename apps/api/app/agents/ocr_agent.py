@@ -1,9 +1,10 @@
 from datetime import date, datetime, timezone
 
-from api.tests.evaluation.test_employee_repository import EmployeeRepository
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.repositories.employee_repository import EmployeeRepository
 from app.schemas.extraction import (
     EmployeeContext,
-    Extraction,
     FoodMealsDetails,
     TravelDetails,
     AccommodationDetails,
@@ -16,8 +17,9 @@ from app.services.ocr_extraction_gemini_service import GeminiService
 
 class OCRAgent:
 
-    def __init__(self):
-        self.employee_repository = EmployeeRepository()
+    def __init__(self, session: AsyncSession = None):
+        self.session = session
+        self.employee_repository = EmployeeRepository(session)
         self.gemini_service = GeminiService()
 
     async def process(
@@ -399,7 +401,7 @@ class OCRAgent:
         # 2. VALIDATE EMPLOYEE
         # ==================================================
 
-        employee = self.employee_repository.get_employee(
+        employee = await self.employee_repository.get_employee(
             employee_id
         )
 
@@ -421,7 +423,7 @@ class OCRAgent:
         # 3. FETCH PROJECT
         # ==================================================
 
-        project = self.employee_repository.get_project(
+        project = await self.employee_repository.get_project(
             employee["project_code"]
         )
 

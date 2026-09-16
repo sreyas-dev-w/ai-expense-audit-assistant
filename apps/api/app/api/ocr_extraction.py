@@ -1,18 +1,18 @@
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, UploadFile, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.ocr_agent import OCRAgent
 from app.schemas.extraction import OCRResponse
+from app.db.session import get_db_session
 
 
 router = APIRouter(
     prefix="/api/v1/ocr",
     tags=["OCR Extraction"],
 )
-
-ocr_agent = OCRAgent()
 
 
 @router.post("/extract", response_model=OCRResponse)
@@ -94,6 +94,8 @@ async def extract_receipt(
     expense_type: str | None = Form(None),
 
     additional_details: str | None = Form(None),
+
+    session: AsyncSession = Depends(get_db_session),
 ):
 
     # ==================================================
@@ -101,6 +103,12 @@ async def extract_receipt(
     # ==================================================
 
     receipt_bytes = await receipt.read()
+
+    # ==================================================
+    # INITIALIZE OCR AGENT
+    # ==================================================
+
+    ocr_agent = OCRAgent(session=session)
 
     # ==================================================
     # SEND TO OCR AGENT
