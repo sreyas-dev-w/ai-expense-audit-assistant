@@ -22,9 +22,27 @@ class Settings(BaseSettings):
     db_max_overflow: int = 20
     db_pool_timeout: int = 30
 
-    embedding_dimension: int = 768
+    # RAG / embedding
+    embedding_model: str = "gemini-embedding-2"
+    # Must match the pgvector column width in policy_chunking (1536) for
+    # gemini-embedding-2 unless truncated elsewhere on purpose.
+    embedding_dimension: int = 1536
+    embedding_batch_size: int = 64
+    embedding_timeout_seconds: int = 60
 
+    # Policy document storage (relative to apps/api/)
+    policy_storage_dir: Path = Path("storage_dump/policies")
+    policy_chunk_size: int = 800
+    policy_chunk_overlap: int = 80
+    policy_search_default_top_k: int = 5
+    policy_search_max_top_k: int = 20
+    policy_search_similarity_threshold: float = 0.0
+
+    # LLM
     gemini_api_key: str = ""
+    gemini_llm_model: str = "gemini-3.6-flash"
+    gemini_llm_timeout_seconds: int = 60
+    gemini_max_retries: int = 2
 
     @property
     def is_development(self) -> bool:
