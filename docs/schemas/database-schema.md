@@ -62,11 +62,25 @@ erDiagram
         String confidence_score
     }
 
+    policyChunking{
+        Integer id PK
+        Integer policy_id
+        String content
+        JsonB metadata
+        Vector embeddings
+    }
+
     accounts ||--o{ projects : "has"
     projects ||--o{ employees : "assigns"
     employees ||--o{ claims : "submits"
     agentResponse ||--o{ claims : "has"
 ```
+
+### note on `policy_id`
+
+`policy_chunking` references a policy source that is not modeled yet, so
+`policy_id` is a plain indexed integer without a foreign key. Add a FK once a
+`policy` table exists.
 
 ## Type Mapping
 
@@ -79,7 +93,8 @@ The domain types above map to PostgreSQL types as follows:
 | `Float` (money) | `NUMERIC(14,2)` | Monetary values must be exact; floats introduce rounding errors. `budget_allocated`, `remaining_budget`, `claim_amount`. |
 | `String confidence_score` | `NUMERIC(5,2)` | Numeric score for the agent's confidence (e.g. `92.00`). |
 | `Enum` | Native PostgreSQL `ENUM` | Enums are stored as real PG enum types (`native_enum=True`) so the database enforces the allowed values. Enum labels are the Python member names (e.g. `MEALS`, `DRAFT`). |
-| `JsonB` | `JSONB` | `category_data`. |
+| `JsonB` | `JSONB` | `category_data`, `agent_response.validation_response` / `policy_response`, `policy_chunking.metadata`. |
+| `Vector[1536]` | `vector(1536)` (pgvector) | `policy_chunking.embeddings`, from the Gemini Embedding 2 model (`gemini-embedding-2`, `output_dimensionality=1536`). |
 | `Bool` | `BOOLEAN` | `is_manager`. |
 | `DateTime` | `TIMESTAMPTZ` | Timezone-aware timestamps (`DateTime(timezone=True)`). |
 | `Integer PK` | `INTEGER` + `IDENTITY` | `claims.claim_id` and `agentResponse.id` are auto-incrementing sequences. |
@@ -94,6 +109,7 @@ The domain types above map to PostgreSQL types as follows:
 - `employees.employee_id ← claims.employee_id`: `ON DELETE CASCADE`.
 - `employees.employee_id ← claims.auditer_id`: the auditor assigned to the claim (nullable; `SET NULL`).
 - `claims.claim_id ← agent_response.claim_id`: one claim has many agent responses. `ON DELETE CASCADE`.
+- `policy_chunking.policy_id` is a plain indexed integer column from the source schema (no foreign key; the policy table does not exist yet).
 - `claims.project_code` is a plain indexed column from the source schema (no foreign key).
 
 ## Table Details
@@ -161,6 +177,24 @@ The domain types above map to PostgreSQL types as follows:
 | `policy_response` | JSONB | NULL, structured agent output |
 | `notes` | TEXT | NULL |
 | `confidence_score` | NUMERIC(5,2) | NULL |
+
+### `policy_chunking`
+
+Chunked policy documents with embeddings for semantic search.
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | INTEGER + IDENTITY | PK |
+| `policy_id` | INTEGER | NOT NULL, indexed |
+| `content` | TEXT | NOT NULL |
+| `metadata` | JSONB | NULL |
+| `embeddings` | `vector(1536)` | NULL, Gemini Embedding 2 (`gemini-embedding-2`) |
+
+Indexes:
+
+- `ix_policy_chunking_policy_id`: btree on `policy_id`.
+- `ix_policy_chunking_embeddings`: HNSW on `embeddings` with `vector_cosine_ops`
+  (cosine distance; Gemini embeddings are normalized).
 
 ## Enumerations
 

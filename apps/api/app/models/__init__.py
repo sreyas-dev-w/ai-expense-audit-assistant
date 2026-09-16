@@ -3,6 +3,7 @@ from app.models.projects import Project
 from app.models.employees import Employee
 from app.models.claims import Claim
 from app.models.agent_response import AgentResponse
+from app.models.policy_chunk import PolicyChunk
 from app.models.enums import (
     ClaimCategory,
     ClaimPriority,
@@ -18,6 +19,7 @@ __all__ = [
     "Employee",
     "Claim",
     "AgentResponse",
+    "PolicyChunk",
     "Currency",
     "JobLevel",
     "ClaimCategory",
