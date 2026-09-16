@@ -58,7 +58,7 @@ The workflow is **sequential**: the Audit Agent coordinates the specialized sub-
 Parallel agent execution is not used in the initial implementation.
 
 **Runtime flows**
-- `data/input/` → `seed_postgres.py` → PostgreSQL (employees, historical claims)
+- `data/seed/` → `apps/api/scripts/seed_postgres.py` → PostgreSQL (accounts, projects, employees)
 - `data/input/policies/` → `index_policies.py` → pgvector embeddings table in PostgreSQL
 - Frontend upload → `storage/uploads/` → Gemini Flash OCR → PostgreSQL (audit results)
 
@@ -120,6 +120,7 @@ database sessions; they use narrow, well-defined tools that delegate to applicat
 ```
 apps/api/
 ├── requirements.txt
+├── scripts/                   # CLI: seed_postgres.py (one-time CSV load)
 └── app/
     ├── main.py
     ├── api/                       # Routers (HTTP) - audits, auth, claims, dashboard, health, policies, uploads

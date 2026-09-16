@@ -1,9 +1,19 @@
 """Shared test doubles for policy ingestion, retrieval and agent tests."""
+import asyncio
 import hashlib
-
-import pytest
+import os
+import sys
 from decimal import Decimal
 from datetime import date
+
+import pytest
+
+# Importing app.main constructs OCRAgent, which requires a Gemini key.
+os.environ.setdefault("GEMINI_API_KEY", "test-placeholder")
+
+# psycopg async cannot run on Windows ProactorEventLoop.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from app.models.enums import ExpenseCategory
 from app.schemas.expense import FoodMealsData

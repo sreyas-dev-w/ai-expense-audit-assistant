@@ -1,4 +1,6 @@
 from collections.abc import AsyncGenerator
+import asyncio
+import sys
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -8,6 +10,9 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import settings
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 engine: AsyncEngine = create_async_engine(
     settings.database_url,

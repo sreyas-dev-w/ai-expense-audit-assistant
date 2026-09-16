@@ -40,14 +40,20 @@ npm run dev
 
 ## api
 
-FastAPI backend.
+FastAPI backend. Requires a local PostgreSQL instance with pgvector (see `apps/api/.env.example` for the connection string shape).
 
 ```bash
-cd api
+cd apps/api
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+.venv/bin/alembic upgrade head
+.venv/bin/python scripts/seed_postgres.py
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
-Health check: http://localhost:8000/api/v1/health
+- `python scripts/seed_postgres.py --dry-run` parses the CSVs and prints counts without writing.
+- `python scripts/seed_postgres.py --force` deletes existing accounts/projects/employees (and cascading claims) then reloads. Dev-only.
+
+Liveness: http://localhost:8000/api/v1/health
+Readiness (Postgres ping): http://localhost:8000/api/v1/health/ready
 Interactive docs: http://localhost:8000/docs
