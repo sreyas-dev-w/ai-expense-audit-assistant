@@ -10,10 +10,10 @@ from app.schemas.extraction import (
     TravelExtraction,
     AccommodationExtraction,
     OtherExtraction,
+    Extraction,
 )
 
 _PROMPT_FILE = Path(__file__).resolve().parents[1] / "prompts" / "ocr_extraction_prompt.txt"
-
 
 load_dotenv()
 
@@ -21,22 +21,12 @@ load_dotenv()
 class GeminiService:
 
     def __init__(self):
-        # ==================================================
-        # Gemini API configuration
-        # ==================================================
-
         api_key = os.getenv("GEMINI_API_KEY")
-
         if not api_key:
-            raise RuntimeError(
-                "GEMINI_API_KEY is not configured."
-            )
+            raise RuntimeError("GEMINI_API_KEY is not configured.")
 
-        self.client = genai.Client(
-            api_key=api_key
-        )
-
-        self.model = "gemini-3.6-flash"
+        self.client = genai.Client(api_key=api_key)
+        self.model = "gemini-2.0-flash"
 
     def _load_prompt(self) -> str:
         """Load OCR extraction prompt from text file"""
@@ -47,107 +37,45 @@ class GeminiService:
         receipt_bytes: bytes,
         mime_type: str,
         expense_category: str,
-    ):
-        # ==================================================
-        # 1. Normalize category
-        # ==================================================
+    ) -> Extraction:
+        """Extract receipt data from image using Gemini vision."""
 
         expense_category = expense_category.strip().upper()
 
-        # ==================================================
-        # 2. Select extraction schema
-        # ==================================================
+        # Select schema based on category
+        schema_map = {
+            "FOOD_MEALS": FoodMealsExtraction,
+            "TRAVEL": TravelExtraction,
+            "ACCOMMODATION": AccommodationExtraction,
+            "OTHERS": OtherExtraction,
+        }
 
-        if expense_category == "FOOD_MEALS":
+        if expense_category not in schema_map:
+            raise ValueError(f"Unsupported expense category: {expense_category}")
 
-            extraction_schema = FoodMealsExtraction
+        extraction_schema = schema_map[expense_category]
 
-        elif expense_category == "TRAVEL":
+        print(f"[GEMINI] Extracting {expense_category} receipt data.")
 
-            extraction_schema = TravelExtraction
-
-        elif expense_category == "ACCOMMODATION":
-
-            extraction_schema = AccommodationExtraction
-
-        elif expense_category == "OTHERS":
-
-            extraction_schema = OtherExtraction
-
-        else:
-
-            raise ValueError(
-                f"Unsupported expense category: "
-                f"{expense_category}"
-            )
-
-        print(
-            f"[GEMINI] Using extraction schema: "
-            f"{extraction_schema.__name__}"
-        )
-
-        # ==================================================
-        # 3. Build category-aware prompt
-        # ==================================================
-
-        prompt = self._load_prompt().format(
-            expense_category=expense_category
-        )
-
-        # ==================================================
-        # 4. Send receipt to Gemini
-        # ==================================================
-
-        print(
-            f"[GEMINI] Sending receipt for "
-            f"category '{expense_category}'."
-        )
+        prompt = self._load_prompt().format(expense_category=expense_category)
 
         response = await self.client.aio.models.generate_content(
             model=self.model,
-
             contents=[
-                types.Part.from_text(
-                    text=prompt
-                ),
-
-                types.Part.from_bytes(
-                    data=receipt_bytes,
-                    mime_type=mime_type,
-                ),
+                types.Part.from_text(text=prompt),
+                types.Part.from_bytes(data=receipt_bytes, mime_type=mime_type),
             ],
-
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-
                 response_schema=extraction_schema,
-
                 temperature=0,
             ),
         )
 
-        # ==================================================
-        # 5. Parse structured Gemini response
-        # ==================================================
-
+        # Use structured parsing if available, fallback to JSON parsing
         if response.parsed is not None:
-
-            print(
-                "[GEMINI] Structured response parsed successfully."
-            )
-
+            print("[GEMINI] Extraction successful.")
             return response.parsed
 
-        # ==================================================
-        # 6. Fallback JSON parsing
-        # ==================================================
-
-        print(
-            "[GEMINI WARNING] "
-            "Structured response was not available. "
-            "Parsing response text manually."
-        )
-
-        return extraction_schema.model_validate_json(
-            response.text
-        )
+        print("[GEMINI] Fallback JSON parsing.")
+        return extraction_schema.model_validate_json(response.text)
