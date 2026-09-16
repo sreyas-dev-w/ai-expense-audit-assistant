@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from app.core.dependencies import get_audit_service
 from app.schemas.audit import AuditRunResponse
 from app.services.audit_service import AuditNotFoundError, AuditService
-from app.services.validation_service import ClaimNotFoundError
+from app.core.exceptions import ClaimNotFoundError
 from app.tools.audit_tools import AuditPersistError, EmployeeNotFoundError
 
 router = APIRouter(prefix="/audits", tags=["audits"])

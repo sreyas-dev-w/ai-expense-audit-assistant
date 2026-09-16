@@ -43,6 +43,30 @@ class EmployeeRepository:
         """Fetch the manager row; same shape as ``get_employee``."""
         return await self.get_employee(manager_id)
 
+    async def get_employee_model(self, employee_id: str) -> Employee | None:
+        """Fetch the ORM row itself, for callers that need the whole entity."""
+        if not self.session:
+            return None
+        return await self.session.get(Employee, employee_id)
+
+    async def get_by_email(self, email: str) -> Employee | None:
+        """Look up the login identity. Emails are stored and matched lowercase."""
+        if not self.session:
+            return None
+        query = select(Employee).where(Employee.email == email.strip().lower())
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_report_ids(self, manager_id: str) -> list[str]:
+        """Employee ids that report directly to ``manager_id``."""
+        if not self.session:
+            return []
+        query = select(Employee.employee_id).where(
+            Employee.manager_id == manager_id
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
     async def get_project(self, project_code: str):
         """
         Fetch project from database.

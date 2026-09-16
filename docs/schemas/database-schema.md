@@ -27,6 +27,8 @@ erDiagram
     employees {
         String employee_id PK
         String employee_name
+        String email
+        String password
         Enum job_level
         Bool is_manager
         String manager_id FK
@@ -156,10 +158,19 @@ The domain types above map to PostgreSQL types as follows:
 |---|---|---|
 | `employee_id` | VARCHAR(64) | PK |
 | `employee_name` | VARCHAR(255) | NOT NULL |
+| `email` | VARCHAR(255) | NOT NULL, unique — the login identifier |
+| `password` | VARCHAR(255) | NOT NULL — **demo only, stored unhashed** (see below) |
 | `job_level` | ENUM | NOT NULL |
 | `is_manager` | BOOLEAN | NOT NULL, default `false` |
 | `manager_id` | VARCHAR(64) | NULL, self-FK → `employees.employee_id` (SET NULL), indexed |
 | `project_code` | VARCHAR(64) | NULL, FK → `projects.project_code` (SET NULL), indexed |
+
+`employees.password` holds the login credential in plaintext so the sample
+application can seed accounts for every existing employee. This is a deliberate
+demo shortcut and contradicts `docs/backend/security.md`; a real deployment must
+replace it with a salted hash column before storing any genuine credential.
+Migration `c4e07b15a982` backfills `email` as `first.last@expenseaudit.test`
+derived from `employee_name` (employee id appended on collision).
 
 ### `claims`
 

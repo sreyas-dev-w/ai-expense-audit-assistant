@@ -4,3 +4,6 @@ __pycache__/
 .env
 .pytest_cache/
 storage_dump/
+
+# Local dev server logs
+*.log

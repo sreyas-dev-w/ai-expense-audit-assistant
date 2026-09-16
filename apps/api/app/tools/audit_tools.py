@@ -30,7 +30,7 @@ from app.schemas.validation import (
     ValidationAgentStatus,
     ValidationSeverity,
 )
-from app.services.validation_service import ClaimNotFoundError
+from app.core.exceptions import ClaimNotFoundError
 
 _RECEIPT_MIME = {
     ".png": "image/png",

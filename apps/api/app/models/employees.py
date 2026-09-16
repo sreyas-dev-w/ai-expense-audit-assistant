@@ -10,6 +10,10 @@ class Employee(Base):
 
     employee_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     employee_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    # DEMO ONLY: stored unhashed so the sample app can seed logins. Never ship
+    # this to production; see docs/backend/security.md.
+    password: Mapped[str] = mapped_column(String(255), nullable=False)
     job_level: Mapped[JobLevel] = mapped_column(
         Enum(JobLevel, name="job_level"),
         nullable=False,

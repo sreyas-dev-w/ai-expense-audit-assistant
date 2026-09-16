@@ -21,7 +21,7 @@ from app.services.gemini_client import GeminiClient
 from app.services.rag_service import PolicyRagService
 from app.services.validation_context_service import ValidationContextService
 from app.tools.audit_tools import AuditPersistError, AuditTools, EmployeeNotFoundError
-from app.services.validation_service import ClaimNotFoundError
+from app.core.exceptions import ClaimNotFoundError
 
 
 class AuditNotFoundError(Exception):

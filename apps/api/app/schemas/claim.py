@@ -6,7 +6,8 @@ against exactly one of the category data models in ``app/schemas/expense.py``.
 """
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Literal, Union
+from enum import Enum
+from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -111,3 +112,32 @@ ClaimRead = Annotated[
     ],
     Field(discriminator="category"),
 ]
+
+
+class ClaimListItem(ClaimReadBase):
+    """Table-facing row: the claim plus the latest audit run's headline fields.
+
+    Deliberately keeps ``category_data`` opaque -- list views render the claim
+    summary, and the detail endpoint returns the validated ``ClaimRead`` union.
+    """
+
+    category: ExpenseCategory
+    category_data: dict[str, Any] = Field(default_factory=dict)
+    employee_name: str | None = None
+    has_audit: bool = False
+    audit_recommendation: str | None = None
+    audit_confidence: Decimal | None = None
+
+
+class ClaimDecision(str, Enum):
+    APPROVE = "approve"
+    REJECT = "reject"
+
+
+class ClaimDecisionRequest(BaseModel):
+    """A manager's approve/reject call. Notes are required either way."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    decision: ClaimDecision
+    notes: str = Field(min_length=1, max_length=4000)

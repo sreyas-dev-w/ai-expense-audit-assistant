@@ -46,6 +46,9 @@ class OCRState(TypedDict, total=False):
     submission: Optional[Submission]
     extraction: Optional[dict]
     details: Optional[dict]
+    # LangGraph only carries keys declared on the state schema, so the final
+    # response has to be listed here or ``process`` cannot read it back.
+    response: Optional[OCRResponse]
 
 
 class OCRAgent:

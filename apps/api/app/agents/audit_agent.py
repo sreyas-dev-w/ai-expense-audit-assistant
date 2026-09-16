@@ -58,7 +58,7 @@ from app.tools.audit_tools import (
     format_validation_violation,
     load_receipt_bytes,
 )
-from app.services.validation_service import ClaimNotFoundError
+from app.core.exceptions import ClaimNotFoundError
 
 _PROMPT_FILE = Path(__file__).resolve().parents[1] / "prompts" / "audit_aggregation_prompt.txt"
 

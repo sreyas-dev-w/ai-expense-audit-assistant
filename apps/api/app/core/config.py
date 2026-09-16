@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     db_max_overflow: int = 20
     db_pool_timeout: int = 30
 
+    # Auth. Demo-grade: the signing key only protects session tokens, and
+    # employee credentials are stored unhashed (see app/services/auth_service.py).
+    auth_secret_key: str = "dev-only-change-me"
+    auth_token_ttl_seconds: int = 43200
+
+    # Uploaded receipt storage (relative to apps/api/)
+    receipt_storage_dir: Path = Path("storage_dump/receipts")
+
     # RAG / embedding
     embedding_model: str = "gemini-embedding-2"
     # Must match the pgvector column width in policy_chunking (1536) for

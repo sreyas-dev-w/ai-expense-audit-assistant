@@ -6,9 +6,9 @@ Routing-only: handlers parse/validate and delegate to ``ValidationService``
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.dependencies import get_validation_service
+from app.core.exceptions import ClaimNotFoundError
 from app.schemas.validation import ValidationEvaluateResponse, ValidationRequest
 from app.services.validation_service import (
-    ClaimNotFoundError,
     ValidationPersistError,
     ValidationService,
 )

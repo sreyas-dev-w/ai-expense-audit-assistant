@@ -1,4 +1,5 @@
 from datetime import date
+from functools import lru_cache
 from typing import Literal
 
 from fastapi import APIRouter, File, Form, UploadFile
@@ -12,7 +13,11 @@ router = APIRouter(
     tags=["OCR Extraction"],
 )
 
-ocr_agent = OCRAgent()
+
+@lru_cache(maxsize=1)
+def get_ocr_agent() -> OCRAgent:
+    """Built on first request so a missing GEMINI_API_KEY cannot break startup."""
+    return OCRAgent()
 
 
 @router.post("/extract", response_model=OCRResponse)
@@ -106,7 +111,7 @@ async def extract_receipt(
     # SEND TO OCR AGENT
     # ==================================================
 
-    result = await ocr_agent.process(
+    result = await get_ocr_agent().process(
         employee_id=employee_id,
         expense_category=expense_category,
 

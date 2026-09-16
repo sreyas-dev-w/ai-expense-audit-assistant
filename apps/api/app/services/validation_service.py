@@ -8,6 +8,7 @@ transaction after the graph returns.
 from decimal import Decimal
 
 from app.agents.validation_agent import run_validation_agent
+from app.core.exceptions import ClaimNotFoundError
 from app.db.session import async_session_factory
 from app.repositories.agent_response_repository import AgentResponseRepository
 from app.repositories.claim_repository import ClaimRepository
@@ -23,13 +24,6 @@ from app.schemas.validation import (
 from app.services.gemini_client import GeminiClient
 from app.services.policy_request_mapper import to_policy_evaluation_request
 from app.services.validation_context_service import ValidationContextService
-
-
-class ClaimNotFoundError(Exception):
-    def __init__(self, claim_id: int):
-        super().__init__(f"Claim {claim_id} was not found")
-        self.claim_id = claim_id
-        self.code = "claim_not_found"
 
 
 class ValidationPersistError(Exception):
