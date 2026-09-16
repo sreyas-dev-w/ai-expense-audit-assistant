@@ -6,6 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, JSONType
 from app.models.enums import (
+    AIDecision,
+    AIRunStatus,
     ClaimPriority,
     ClaimStatus,
     Currency,
@@ -50,6 +52,9 @@ class Claim(Base):
     claim_amount: Mapped[Decimal] = mapped_column(
         Numeric(14, 2), nullable=False, default=Decimal("0")
     )
+    tax_amount: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2), nullable=False, default=Decimal("0")
+    )
     currency: Mapped[Currency] = mapped_column(
         Enum(Currency, name="currency"),
         nullable=False,
@@ -65,6 +70,15 @@ class Claim(Base):
         Enum(ClaimPriority, name="claim_priority"),
         nullable=False,
         default=ClaimPriority.MEDIUM,
+    )
+    ai_run_status: Mapped[AIRunStatus] = mapped_column(
+        Enum(AIRunStatus, name="ai_run_status"),
+        nullable=False,
+        default=AIRunStatus.PENDING,
+    )
+    ai_decision: Mapped[AIDecision | None] = mapped_column(
+        Enum(AIDecision, name="ai_decision"),
+        nullable=True,
     )
     receipt_url: Mapped[str | None] = mapped_column(
         String(1024), nullable=True
