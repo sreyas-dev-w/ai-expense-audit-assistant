@@ -26,7 +26,7 @@ class GeminiService:
             raise RuntimeError("GEMINI_API_KEY is not configured.")
 
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-2.0-flash"
+        self.model = "gemini-3.6-flash"
 
     def _load_prompt(self) -> str:
         """Load OCR extraction prompt from text file"""
@@ -57,7 +57,10 @@ class GeminiService:
 
         print(f"[GEMINI] Extracting {expense_category} receipt data.")
 
-        prompt = self._load_prompt().format(expense_category=expense_category)
+        prompt = self._load_prompt().replace(
+    "{expense_category}",
+    expense_category,
+)
 
         response = await self.client.aio.models.generate_content(
             model=self.model,
