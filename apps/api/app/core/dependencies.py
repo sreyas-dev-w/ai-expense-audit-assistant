@@ -10,6 +10,7 @@ from app.services.embedding_service import EmbeddingProvider, GeminiEmbeddingPro
 from app.services.gemini_client import GeminiClient
 from app.services.policy_document_service import PolicyDocumentService
 from app.services.rag_service import PolicyRagService
+from app.services.audit_service import AuditService
 from app.services.validation_context_service import ValidationContextService
 from app.services.validation_service import ValidationService
 
@@ -40,4 +41,12 @@ def get_validation_service() -> ValidationService:
     return ValidationService(
         llm_client=get_llm_client(),
         context_service=get_validation_context_service(),
+    )
+
+
+def get_audit_service() -> AuditService:
+    return AuditService(
+        llm_client=get_llm_client(),
+        context_service=get_validation_context_service(),
+        rag_service=get_policy_rag_service(),
     )

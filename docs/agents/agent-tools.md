@@ -23,14 +23,23 @@ The LLM must **not** directly construct or execute arbitrary SQL.
 
 ## Tool Design
 
-Tools expose narrow, well-defined operations. The exact tool set should evolve with the domain. Examples:
+Tools expose narrow, well-defined operations. The Audit Agent tool set in
+`apps/api/app/tools/audit_tools.py` is:
 
 ```text
-update_extraction_result(...)
-store_validation_result(...)
-store_policy_result(...)
-update_audit_status(...)
+load_audit_context(claim_id)
+update_claim_status(claim_id, status)
+create_run_row(claim_id)
+store_validation_result(row_id, result)
+store_policy_result(row_id, result)
+store_audit_result(row_id, result)
+load_receipt_bytes(receipt_url)
 ```
+
+`store_audit_result` writes `audit_response` JSONB plus the approver-facing
+`validation_violation`, `policy_violation`, `notes`, and `confidence_score`
+columns. Violation text is joined from structured findings in code; `notes` is
+the Gemini summary.
 
 Tools must:
 

@@ -34,9 +34,14 @@ class EmployeeRepository:
             "employee_id": employee.employee_id,
             "employee_name": employee.employee_name,
             "job_level": employee.job_level.value,
+            "is_manager": employee.is_manager,
             "manager_id": employee.manager_id,
             "project_code": employee.project_code,
         }
+
+    async def get_manager(self, manager_id: str):
+        """Fetch the manager row; same shape as ``get_employee``."""
+        return await self.get_employee(manager_id)
 
     async def get_project(self, project_code: str):
         """

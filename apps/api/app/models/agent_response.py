@@ -22,6 +22,11 @@ class AgentResponse(Base):
     policy_response: Mapped[dict[str, Any] | None] = mapped_column(
         JSONType, nullable=True
     )
+    audit_response: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONType, nullable=True
+    )
+    validation_violation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    policy_violation: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     confidence_score: Mapped[Decimal | None] = mapped_column(
         Numeric(5, 2), nullable=True

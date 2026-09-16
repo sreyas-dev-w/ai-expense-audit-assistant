@@ -72,6 +72,24 @@ Validation domain schemas are defined once in `apps/api/app/schemas/validation.p
   `apps/api/app/services/policy_request_mapper.py` builds `PolicyEvaluationRequest` from the same
   OCR envelope. Policy RAG does **not** consume validation findings.
 
+## Audit Contracts
+
+Audit domain schemas are defined once in `apps/api/app/schemas/audit.py`:
+
+- Agent input: `AuditRequest` (`claim_id`, optional `persist`) plus receipt bytes. Relational
+  context is `AuditContext` (claim, employee, manager, project, account snapshots) loaded from
+  the core tables — not ORM models.
+- Agent output: `AuditResult` (recommendation, reasons, extraction, validation, policy,
+  references, warnings, confidence, `validation_violation`, `policy_violation`, `notes`) wrapped
+  in `AuditAgentResult`. HTTP `AuditRunResponse` adds `agent_response_id`, `claim_status`, and
+  the denormalized approver fields.
+- Persistence: one `agent_response` row per run. The Audit Agent tools write
+  `validation_response`, `policy_response`, `audit_response`, `validation_violation`,
+  `policy_violation`, `notes`, and `confidence_score`. `claims.auditer_notes` is never written.
+- Recommendation is decision support (`RECOMMEND_APPROVE` / `RECOMMEND_REJECT` /
+  `FLAG_FOR_REVIEW`). Claim status is set to `IN_AUDIT` only; the workflow does not approve or
+  reject the claim.
+
 ## Outcome
 
 The system preserves structured stage outputs for auditability:

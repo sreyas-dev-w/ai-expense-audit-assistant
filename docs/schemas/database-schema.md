@@ -58,6 +58,9 @@ erDiagram
         Integer claim_id FK
         JsonB validation_response
         JsonB policy_response
+        JsonB audit_response
+        String validation_violation
+        String policy_violation
         String notes
         String confidence_score
     }
@@ -106,7 +109,7 @@ The domain types above map to PostgreSQL types as follows:
 | `Float` (money) | `NUMERIC(14,2)` | Monetary values must be exact; floats introduce rounding errors. `budget_allocated`, `remaining_budget`, `claim_amount`. |
 | `String confidence_score` | `NUMERIC(5,2)` | Numeric score for the agent's confidence (e.g. `92.00`). |
 | `Enum` | Native PostgreSQL `ENUM` | Enums are stored as real PG enum types (`native_enum=True`) so the database enforces the allowed values. Enum labels are the Python member names (e.g. `MEALS`, `DRAFT`). |
-| `JsonB` | `JSONB` | `category_data`, `agent_response.validation_response` / `policy_response`, `policy_chunking.metadata`. |
+| `JsonB` | `JSONB` | `category_data`, `agent_response.validation_response` / `policy_response` / `audit_response`, `policy_chunking.metadata`. |
 | `Vector[1536]` | `vector(1536)` (pgvector) | `policy_chunking.embeddings`, from the Gemini Embedding 2 model (`gemini-embedding-2`, `output_dimensionality=1536`). |
 | `Bool` | `BOOLEAN` | `is_manager`. |
 | `DateTime` | `TIMESTAMPTZ` | Timezone-aware timestamps (`DateTime(timezone=True)`). |
@@ -186,10 +189,13 @@ The domain types above map to PostgreSQL types as follows:
 |---|---|---|
 | `id` | INTEGER + IDENTITY | PK |
 | `claim_id` | INTEGER | NOT NULL, FK → `claims.claim_id` (CASCADE), indexed |
-| `validation_response` | JSONB | NULL, structured agent output |
-| `policy_response` | JSONB | NULL, structured agent output |
-| `notes` | TEXT | NULL |
-| `confidence_score` | NUMERIC(5,2) | NULL |
+| `validation_response` | JSONB | NULL, structured Validation Agent output |
+| `policy_response` | JSONB | NULL, structured Policy RAG Agent output |
+| `audit_response` | JSONB | NULL, structured Audit Agent aggregate (`AuditResult`) |
+| `validation_violation` | TEXT | NULL, grounded summary of blocking/warning validation findings for the approver UI |
+| `policy_violation` | TEXT | NULL, grounded summary of policy violations for the approver UI |
+| `notes` | TEXT | NULL, Gemini approver-facing summary of this audit run |
+| `confidence_score` | NUMERIC(5,2) | NULL, overall audit confidence (0–1 scale, e.g. `0.92`) |
 
 ### `policy_documents`
 

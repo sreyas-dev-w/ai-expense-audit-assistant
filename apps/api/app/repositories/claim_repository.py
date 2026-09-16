@@ -1,4 +1,5 @@
-"""Read access for expense claims used by validation (duplicates + persist)."""
+"""Read/write access for expense claims used by validation and the Audit Agent."""
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -6,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.claims import Claim
+from app.models.enums import ClaimStatus
 from app.rules.constants import EMPLOYEE_CLAIM_SCAN_LIMIT
 
 
@@ -29,6 +31,17 @@ class ClaimRepository:
         stmt = stmt.order_by(Claim.claim_id.desc()).limit(limit)
         rows = list((await self._session.execute(stmt)).scalars().all())
         return [_claim_row(claim) for claim in rows]
+
+    async def update_status(
+        self, claim_id: int, status: ClaimStatus
+    ) -> Claim | None:
+        claim = await self.get_claim(claim_id)
+        if claim is None:
+            return None
+        claim.status = status
+        claim.claim_updated_at = datetime.now(timezone.utc)
+        await self._session.flush()
+        return claim
 
 
 def _claim_row(claim: Claim) -> dict[str, Any]:

@@ -56,4 +56,25 @@ Warnings
 Confidence / Uncertainty where applicable
 ```
 
-See `docs/backend/auditability.md` for the final-schema requirements.
+## Implemented Agent
+
+The Audit Agent is a LangGraph parent graph in `app/agents/audit_agent.py`:
+
+```text
+load_context → set_status → extract → validate → persist_validation →
+policy → persist_policy → aggregate → persist_final
+```
+
+- **Input:** existing `claim_id` plus optional receipt bytes. Context is loaded from
+  `claims`, `employees` (submitter + manager), `projects`, and `accounts`.
+- **Sub-agents:** OCR (`OCRAgent.process`), Validation (`run_validation_agent` with
+  `persist=False`), Policy RAG (`run_policy_agent`). Mapping is
+  `claim_to_ocr_kwargs` then `to_policy_evaluation_request`.
+- **Persistence:** narrow tools in `app/tools/audit_tools.py` write one `agent_response`
+  row: stage JSONB, grounded `validation_violation` / `policy_violation` text, Gemini
+  `notes`, and `confidence_score`. `claims.auditer_notes` is reserved for the human
+  approver and is not written.
+- **HTTP:** `POST /api/v1/audits` (multipart `claim_id` + optional `receipt`) and
+  `GET /api/v1/audits/{claim_id}`.
+- **LLM:** Gemini Flash produces only the approver `notes` and explanation `reasons`.
+  Recommendation is decided in code (FAIL/REJECT cannot become `RECOMMEND_APPROVE`).

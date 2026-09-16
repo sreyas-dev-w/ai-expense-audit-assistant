@@ -111,6 +111,8 @@ class OCRAgent:
         # RECEIPT
         receipt_bytes: bytes | None = None,
         mime_type: str | None = None,
+        employee: dict | None = None,
+        project: dict | None = None,
     ) -> OCRResponse:
         """Process OCR extraction through LangGraph workflow"""
 
@@ -135,6 +137,10 @@ class OCRAgent:
             "receipt_bytes": receipt_bytes,
             "mime_type": mime_type,
         }
+        if employee is not None:
+            initial_state["employee"] = employee
+        if project is not None:
+            initial_state["project"] = project
 
         result = await self.graph.ainvoke(initial_state)
         return result["response"]
@@ -197,6 +203,10 @@ class OCRAgent:
     async def _fetch_employee(self, state: OCRState) -> OCRState:
         """Fetch employee from database"""
 
+        if state.get("employee"):
+            print("[OCR] Using preloaded employee context.")
+            return state
+
         employee_id = state["employee_id"]
         employee = await self.employee_repository.get_employee(employee_id)
 
@@ -218,7 +228,12 @@ class OCRAgent:
         account_id = None
 
         if employee.get("project_code"):
-            project = await self.employee_repository.get_project(employee["project_code"])
+            if state.get("project") is None:
+                project = await self.employee_repository.get_project(
+                    employee["project_code"]
+                )
+            else:
+                project = state.get("project")
 
         if project:
             account_id = project.get("account_id")
