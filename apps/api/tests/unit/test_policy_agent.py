@@ -95,14 +95,23 @@ def test_query_building_includes_category_and_merchant(food_meals_request):
 
 def test_query_building_for_other_category():
     from app.models.enums import ExpenseCategory
+    from app.schemas.expense import OtherData
     from app.schemas.policy import OtherPolicyEvaluation, PolicyClaimContext
 
     request = OtherPolicyEvaluation(
         category=ExpenseCategory.OTHER,
         claim=PolicyClaimContext(
-            employee_id="E", claim_amount=100, merchant_name="Stationery Co"
+            employee_id="E",
+            claim_amount=100,
+            merchant_name="Stationery Co",
         ),
-        category_data={"expense_type": "Stationery", "merchant_name": "Stationery Co"},
+        category_data=OtherData(
+            expense_type="Stationery",
+            merchant_name="Stationery Co",
+            line_items=[
+                {"item_header": "Notebooks", "item_amount": 100}
+            ],
+        ),
     )
     query = _build_query(request)
     assert "stationery co" in query.lower()
