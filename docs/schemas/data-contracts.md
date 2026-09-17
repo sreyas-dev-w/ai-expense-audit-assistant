@@ -56,6 +56,22 @@ RAG agent, and services:
 - Agent output: `PolicyAgentOutput` (decision, severity, violations/checks, references, confidence),
   `PolicyAgentResult`, `PolicyAgentError`, `PolicyAgentStatus`.
 
+## Validation Contracts
+
+Validation domain schemas are defined once in `apps/api/app/schemas/validation.py`:
+
+- Agent input: `ValidationRequest` — the OCR envelope (`submission` + `employee_context` +
+  `extraction`) plus optional `claim_id` / `persist`. Category-specific extraction is coerced from
+  `submission.expense_category` so the four OCR unions cannot silently drop fields.
+- Agent output: `ValidationAgentOutput` (verdict, findings, checks, duplicate candidates, budget
+  snapshot, authenticity, confidence) wrapped in `ValidationAgentResult` with explicit
+  `error` / `status`. HTTP adds `stored_agent_response_id` on `ValidationEvaluateResponse`.
+- Persistence: `ValidationService.store_validation_result(claim_id, result)` inserts a new
+  `agent_response` row with `validation_response` JSONB. ERROR envelopes are not written.
+- Policy handoff: `to_policy_evaluation_request(ocr)` in
+  `apps/api/app/services/policy_request_mapper.py` builds `PolicyEvaluationRequest` from the same
+  OCR envelope. Policy RAG does **not** consume validation findings.
+
 ## Outcome
 
 The system preserves structured stage outputs for auditability:

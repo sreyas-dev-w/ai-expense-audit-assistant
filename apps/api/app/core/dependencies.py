@@ -11,6 +11,8 @@ from app.services.audit_service import AuditService
 from app.services.gemini_client import GeminiClient
 from app.services.policy_document_service import PolicyDocumentService
 from app.services.rag_service import PolicyRagService
+from app.services.validation_context_service import ValidationContextService
+from app.services.validation_service import ValidationService
 
 
 @lru_cache(maxsize=1)
@@ -33,3 +35,14 @@ def get_policy_document_service() -> PolicyDocumentService:
 
 def get_audit_service() -> AuditService:
     return AuditService()
+
+def get_validation_context_service() -> ValidationContextService:
+    return ValidationContextService()
+
+
+def get_validation_service() -> ValidationService:
+    return ValidationService(
+        llm_client=get_llm_client(),
+        context_service=get_validation_context_service(),
+    )
+
