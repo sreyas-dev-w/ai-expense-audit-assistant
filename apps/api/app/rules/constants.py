@@ -1,0 +1,11 @@
+"""Shared thresholds for deterministic validation rules."""
+from decimal import Decimal
+
+AMOUNT_TOLERANCE = Decimal("1.00")
+MAX_CLAIM_AGE_DAYS = 90
+DUPLICATE_DATE_WINDOW_DAYS = 7
+DUPLICATE_AMOUNT_TOLERANCE = Decimal("1.00")
+DUPLICATE_SCORE_THRESHOLD = 0.6
+EXACT_DUPLICATE_SCORE = 1.0
+NOTES_MAX_LENGTH = 2000
+EMPLOYEE_CLAIM_SCAN_LIMIT = 100
