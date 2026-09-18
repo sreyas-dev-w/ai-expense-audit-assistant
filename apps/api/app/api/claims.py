@@ -17,12 +17,21 @@ from fastapi import (
     status,
 )
 from pydantic import TypeAdapter, ValidationError
-
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.schemas.agent_response import AgentResponseDetails
+from app.services.agent_response_service import AgentResponseService
 from app.core.dependencies import get_claim_submission_service
-from app.schemas.claim import ClaimCreate, ClaimSubmissionResponse
+from app.db.session import get_db
+from app.schemas.claim import (
+    ClaimAuditUpdate,
+    ClaimCreate,
+    ClaimDetailsResponse,
+    ClaimSubmissionResponse,
+)
 from app.services.claim_service import (
     ClaimSubmissionError,
     ClaimSubmissionService,
+    ClaimService,
     EmployeeNotFoundError,
 )
 
@@ -52,6 +61,7 @@ async def submit_claim(
         ) from exc
 
     content = await receipt.read()
+
     try:
         submission = await service.submit_claim(
             claim=claim,
@@ -61,12 +71,86 @@ async def submit_claim(
         )
     except EmployeeNotFoundError as exc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
         ) from exc
     except ClaimSubmissionError as exc:
         raise HTTPException(
-            status_code=exc.status_code, detail=str(exc)
+            status_code=exc.status_code,
+            detail=str(exc),
         ) from exc
 
-    background_tasks.add_task(service.run_audit_background, submission.claim_id)
+    background_tasks.add_task(
+        service.run_audit_background,
+        submission.claim_id,
+    )
+
     return submission
+
+@router.get(
+    "/managers/{manager_id}/claims",
+    response_model=list[ClaimDetailsResponse],
+    summary="Get all claims for a manager's employees",
+)
+async def get_manager_claims(
+    manager_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await ClaimService.get_claims_by_manager_id(
+        db=db,
+        manager_id=manager_id,
+    )
+
+@router.get(
+    "/{claim_id}/agent-response",
+    response_model=AgentResponseDetails,
+    summary="Get agent response for a claim",
+)
+async def get_agent_response(
+    claim_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AgentResponseService.get_by_claim_id(
+        db=db,
+        claim_id=claim_id,
+    )
+
+
+@router.patch(
+    "/{claim_id}/audit",
+    summary="Update auditor details for a claim",
+)
+async def update_claim_audit(
+    claim_id: int,
+    audit_data: ClaimAuditUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    return await ClaimService.update_claim_audit(
+        db=db,
+        claim_id=claim_id,
+        audit_data=audit_data,
+    )
+
+# ============================================================
+# GET ALL CLAIMS FOR AN EMPLOYEE
+# ============================================================
+
+employee_claims_router = APIRouter(
+    prefix="/employees",
+    tags=["Claims"],
+)
+
+
+@employee_claims_router.get(
+    "/{employee_id}/claims",
+    response_model=list[ClaimDetailsResponse],
+)
+async def get_employee_claims(
+    employee_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await ClaimService.get_claims_by_employee_id(
+        db,
+        employee_id,
+    )
+

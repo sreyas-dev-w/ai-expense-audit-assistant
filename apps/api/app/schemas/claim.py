@@ -131,3 +131,45 @@ ClaimRead = Annotated[
     ],
     Field(discriminator="category"),
 ]
+
+
+# ============================================================
+# EMPLOYEE CLAIM DETAILS RESPONSE
+# ============================================================
+
+class ClaimDetailsResponse(BaseModel):
+    claim_id: int
+    business_purpose: str | None
+    merchant_name: str | None
+    category: str
+    category_data: dict
+
+    employee_id: str
+    auditer_id: str | None
+    auditer_notes: str | None
+
+    project_code: str | None
+
+    claim_amount: Decimal
+    tax_amount: Decimal
+    currency: str
+
+    status: str
+    priority: str
+
+    ai_run_status: str
+    ai_decision: str | None
+
+    receipt_url: str | None
+
+    claim_created_at: datetime | None
+    claim_updated_at: datetime | None
+    receipt_created_at: datetime | None
+
+class ClaimAuditUpdate(BaseModel):
+    status: ClaimStatus
+    priority: ClaimPriority
+    auditer_id: str
+    auditer_notes: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
