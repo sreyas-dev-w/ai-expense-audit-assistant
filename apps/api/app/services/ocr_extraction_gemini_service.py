@@ -26,7 +26,7 @@ class GeminiService:
             raise RuntimeError("GEMINI_API_KEY is not configured.")
 
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-3.6-flash"
+        self.model = "gemini-3.5-flash-lite"
 
     def _load_prompt(self) -> str:
         """Load OCR extraction prompt from text file"""

@@ -34,6 +34,19 @@ Agent Workflow
 
 **Do not assume an LLM response is valid merely because the model was instructed to produce JSON.**
 
+Strict output schemas (`extra="forbid"`) produce `additionalProperties: false` in the Pydantic JSON schema,
+which the Gemini Developer API rejects; `GeminiClient.generate_structured` strips that keyword from the wire
+schema only, so strict post-validation of untrusted LLM output is preserved.
+
+Examples in this codebase:
+
+- Policy RAG: `PolicyAgentOutput` via `apps/api/app/prompts/policy_evaluation_prompt.txt` +
+  `app/agents/policy_rag_agent.py`.
+- Validation: `ValidationReasoningOutput` via `apps/api/app/prompts/validation_prompt.txt` +
+  `app/agents/validation_agent.py`.
+- Audit assessment: `AuditAssessment` via `apps/api/app/prompts/audit_assessment_prompt.txt` +
+  `app/agents/audit_assessment.py` (the Audit Agent's LLM reasoning node).
+
 ## Configuration
 
 Application configuration should be centralized and environment-driven. Do not hard-code:

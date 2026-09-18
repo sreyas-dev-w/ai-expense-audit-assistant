@@ -33,3 +33,9 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+
+
+# `app/api/{auth,claims,employee,project}.py` import `get_db` (not
+# `get_db_session`) as their FastAPI dependency — alias so those routers can
+# actually be imported.
+get_db = get_db_session

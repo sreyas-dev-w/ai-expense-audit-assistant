@@ -44,11 +44,12 @@ Employee Expense Claim
          │           │ company policies from  │
          │           │ PostgreSQL + pgvector  │
          └─────┬─────┴───────────────────────┘
-               │
-               ▼
+│
+                ▼
 ┌─────────────────────────┐
 │     Audit Agent         │
 │ store_responses →       │
+│ assess_result (LLM) →   │
 │ aggregate_result →      │
 │ finish (persist result) │
 └────────────┬────────────┘
@@ -76,8 +77,17 @@ The Validation Agent runs in the same superstep as the Policy RAG Agent via an i
 (`app/agents/audit_agent.py`, wired in `app/services/audit_service.py`); when no runner is injected the `run_validation`
 node falls back to recording `validation_skipped=True`.
 
+After the policy/validation envelopes are persisted (`store_responses`), an **LLM assessment node** (`assess_result`,
+`app/agents/audit_assessment.py`) summarises the OCR extraction and the policy/validation results into a
+recommendation (summary, ai_decision, priority, confidence). It reads those inputs from graph state, falling back to
+the stored `agent_response` row when a stage did not run. When the LLM assessment succeeds, its values drive the
+final `ai_decision` / `priority` / `confidence` / `notes`; when it fails (timeout, client error, invalid output) the
+run degrades gracefully and the deterministic `aggregate_audit_result` produces the result instead — the run never
+fails just because the assessment LLM is unavailable. The assessment only writes `agent_response.notes` and
+`confidence_score`; the `policy_response` / `validation_response` columns are never touched.
+
 Failure-free path: `load_claim → begin_run → fetch_receipt → run_ocr → store_extraction → map_requests →
-dispatch → [run_policy | run_validation] → store_responses → aggregate_result → finish`.
+dispatch → [run_policy | run_validation] → store_responses → assess_result → aggregate_result → finish`.
 
 Every fallible node routes to `mark_failed` on error instead of raising, so failures land as explicit workflow states.
 
