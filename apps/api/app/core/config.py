@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     policy_search_max_top_k: int = 20
     policy_search_similarity_threshold: float = 0.0
 
+    # Claim receipt storage (relative to apps/api/)
+    receipt_storage_dir: Path = Path("storage_dump/receipts")
+
     # LLM
     gemini_api_key: str = ""
     gemini_llm_model: str = "gemini-3.6-flash"

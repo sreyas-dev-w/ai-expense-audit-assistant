@@ -4,19 +4,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
-from app.schemas.extraction import (
-    AccommodationDetails,
-    AccommodationExtraction,
-    FoodMealsDetails,
-    FoodMealsExtraction,
-    OtherDetails,
-    OtherExtraction,
-    TravelDetails,
-    TravelExtraction,
-)
-from app.schemas.validation import ValidationRequest
 from app.rules.helpers import to_decimal
+from app.schemas.extraction import AccommodationExtraction
+from app.schemas.validation import ValidationRequest
 
 
 @dataclass
@@ -65,13 +57,13 @@ def parse_date(value: date | datetime | str | None) -> tuple[date | None, str | 
 
 
 def normalize_request(request: ValidationRequest) -> NormalizedExpense:
-    details = request.submission.details
     extraction = request.extraction
+    claimed = request.category_data or {}
     date_errors: list[str] = []
 
-    spend_amount = to_decimal(getattr(details, "spend_amount", None))
-    extracted_total = to_decimal(getattr(extraction, "total_amount", None))
-    currency = getattr(extraction, "currency", None)
+    spend_amount = to_decimal(request.claim_amount)
+    extracted_total = to_decimal(getattr(extraction, "claim_amount", None))
+    currency = getattr(extraction, "currency", None) or request.currency
     line_item_amounts = [
         amount
         for item in getattr(extraction, "line_items", []) or []
@@ -80,86 +72,69 @@ def normalize_request(request: ValidationRequest) -> NormalizedExpense:
 
     expense_date = None
     expense_date_raw = None
+    raw_date = getattr(extraction, "expense_date", None)
+    if raw_date:
+        expense_date, expense_date_raw = parse_date(raw_date)
+        if expense_date is None:
+            date_errors.append(f"expense_date={raw_date}")
+
     check_in = None
     check_out = None
-    submitted_check_in = None
-    submitted_check_out = None
-    number_of_days = None
-    origin = None
-    destination = None
-    merchant_extracted = getattr(extraction, "merchant_name", None) or getattr(
-        extraction, "hotel_name", None
-    )
-    merchant_submitted = None
-    document_number = None
-
-    if isinstance(extraction, FoodMealsExtraction):
-        expense_date, expense_date_raw = parse_date(extraction.meal_date)
-        document_number = extraction.bill_number
-        if extraction.meal_date and expense_date is None:
-            date_errors.append(f"meal_date={extraction.meal_date}")
-    elif isinstance(extraction, TravelExtraction):
-        expense_date, expense_date_raw = parse_date(extraction.travel_date)
-        document_number = extraction.ticket_number
-        if extraction.travel_date and expense_date is None:
-            date_errors.append(f"travel_date={extraction.travel_date}")
-    elif isinstance(extraction, AccommodationExtraction):
-        check_in, raw_in = parse_date(extraction.check_in_date)
-        check_out, raw_out = parse_date(extraction.check_out_date)
-        expense_date = check_in
-        document_number = extraction.booking_number
-        if extraction.check_in_date and check_in is None:
-            date_errors.append(f"check_in_date={raw_in or extraction.check_in_date}")
-        if extraction.check_out_date and check_out is None:
-            date_errors.append(f"check_out_date={raw_out or extraction.check_out_date}")
-    elif isinstance(extraction, OtherExtraction):
-        expense_date, expense_date_raw = parse_date(extraction.expense_date)
-        document_number = extraction.receipt_number
-        if extraction.expense_date and expense_date is None:
-            date_errors.append(f"expense_date={extraction.expense_date}")
-
-    if isinstance(details, FoodMealsDetails):
-        merchant_submitted = None
-    elif isinstance(details, TravelDetails):
-        origin = details.origin
-        destination = details.destination
-    elif isinstance(details, AccommodationDetails):
-        submitted_check_in = details.check_in_date
-        submitted_check_out = details.check_out_date
-        number_of_days = details.number_of_days
-        merchant_submitted = details.location
+    if isinstance(extraction, AccommodationExtraction):
+        check_in, raw_in = parse_date(extraction.check_in)
+        check_out, raw_out = parse_date(extraction.check_out)
+        if extraction.check_in and check_in is None:
+            date_errors.append(f"check_in={raw_in or extraction.check_in}")
+        if extraction.check_out and check_out is None:
+            date_errors.append(f"check_out={raw_out or extraction.check_out}")
         if expense_date is None:
-            expense_date = submitted_check_in
-    elif isinstance(details, OtherDetails):
-        merchant_submitted = None
+            expense_date = check_in
+
+    submitted_check_in, _ = parse_date(claimed.get("check_in"))
+    submitted_check_out, _ = parse_date(claimed.get("check_out"))
 
     return NormalizedExpense(
-        category=request.submission.expense_category,
+        category=request.category,
         spend_amount=spend_amount,
         extracted_total=extracted_total,
         currency=currency,
-        submitted_at=request.submission.submitted_at,
+        submitted_at=request.submitted_at,
         expense_date=expense_date,
         expense_date_raw=expense_date_raw,
         check_in=check_in or submitted_check_in,
         check_out=check_out or submitted_check_out,
         submitted_check_in=submitted_check_in,
         submitted_check_out=submitted_check_out,
-        number_of_days=number_of_days,
-        origin=origin,
-        destination=destination,
-        merchant_extracted=merchant_extracted,
-        merchant_submitted=merchant_submitted,
-        document_number=document_number,
+        number_of_days=_int_or_none(claimed.get("number_of_nights")),
+        origin=getattr(extraction, "origin", None),
+        destination=getattr(extraction, "destination", None),
+        merchant_extracted=getattr(extraction, "merchant_name", None),
+        merchant_submitted=_submitted_merchant(request, claimed),
+        document_number=getattr(extraction, "receipt_no", None),
         is_receipt=bool(getattr(extraction, "is_receipt", False)),
-        receipt_provided=request.submission.receipt_provided,
+        receipt_provided=request.receipt_provided,
         payment_status=getattr(extraction, "payment_status", None),
         line_item_amounts=line_item_amounts,
-        employee_id_submission=request.submission.employee_id,
-        employee_id_context=request.employee_context.employee_id,
-        account_id=request.employee_context.account_id,
+        employee_id_submission=request.employee_id,
+        employee_id_context=request.employee_id,
+        account_id=request.account_id,
         date_parse_errors=date_errors,
     )
+
+
+def _submitted_merchant(request: ValidationRequest, claimed: dict[str, Any]) -> str | None:
+    if request.merchant_name:
+        return request.merchant_name
+    return claimed.get("merchant_name") or claimed.get("hotel_name")
+
+
+def _int_or_none(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def claim_amount(expense: NormalizedExpense) -> Decimal | None:

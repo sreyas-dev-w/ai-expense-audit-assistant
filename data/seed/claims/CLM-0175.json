@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0175",
+  "employee_id": "EMP-006",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "communications expense",
+  "project_code": "PROJECT-XYZ",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0175",
+      "expense_date": null,
+      "expense_category": "COMMUNICATIONS",
+      "merchant_name": "Cafe Coffee Day",
+      "claimed_amount": "400.00",
+      "description": "communications expense",
+      "receipt_file": "invoices/INV-0175.pdf"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "claim_id": "CLM-0095",
+  "employee_id": "EMP-011",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Business hotel",
+  "project_code": "PROJECT-XYZ",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0095-01",
+      "item_name": "Room Charge",
+      "quantity": 1,
+      "unit_price": "5500.00",
+      "total_amount": "5500.00",
+      "item_category": "Hotel",
+      "approved": "Yes",
+      "expense_date": "2026-08-19",
+      "expense_category": "ACCOMMODATION",
+      "merchant_name": "Taj Hotels",
+      "description": "Business hotel",
+      "receipt_file": "invoices/INV-0095.jpg"
+    },
+    {
+      "line_id": "LINE-0095-02",
+      "item_name": "Spa Service",
+      "quantity": 1,
+      "unit_price": "1500.00",
+      "total_amount": "1500.00",
+      "item_category": "Hotel",
+      "approved": "No"
+    }
+  ]
+}

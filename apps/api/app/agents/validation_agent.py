@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from functools import lru_cache, partial
 from pathlib import Path
 from typing import Any, TypedDict
@@ -26,6 +27,7 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import ValidationError
 
 from app.core.config import settings
+from app.core.logging import to_loggable
 from app.rules import run_all_rules
 from app.schemas.validation import (
     AuthenticityAssessment,
@@ -53,6 +55,8 @@ EMPTY_RESULT_CODE = "missing_result"
 LLM_TIMEOUT_CODE = "llm_timeout"
 INVALID_LLM_OUTPUT_CODE = "invalid_llm_output"
 MALFORMED_INPUT_CODE = "malformed_input"
+
+logger = logging.getLogger(__name__)
 
 
 class ValidationAgentState(TypedDict, total=False):
@@ -231,28 +235,38 @@ async def run_validation_agent(
     llm_client: Any,
 ) -> ValidationAgentResult:
     """Run the Validation Agent once, returning its envelope result."""
+    logger.info(
+        "Validation agent input: claim_id=%s category=%s request=%s",
+        getattr(request, "claim_id", None),
+        getattr(request, "category", None),
+        to_loggable(request),
+    )
     graph = build_validation_agent(
         context_service=context_service, llm_client=llm_client
     )
     try:
         final_state = await graph.ainvoke({"request": request})
     except Exception as exc:
-        return ValidationAgentResult(
+        logger.exception("Validation agent crashed.")
+        result = ValidationAgentResult(
             status=ValidationAgentStatus.ERROR,
             error=ValidationAgentError(
                 code=MALFORMED_INPUT_CODE,
                 message=f"Validation agent failed: {exc}",
             ),
         )
+        logger.info("Validation agent output: %s", to_loggable(result))
+        return result
     result = final_state.get("result")
     if result is None:
-        return ValidationAgentResult(
+        result = ValidationAgentResult(
             status=ValidationAgentStatus.ERROR,
             error=ValidationAgentError(
                 code=EMPTY_RESULT_CODE,
                 message="Validation agent finished without producing a result",
             ),
         )
+    logger.info("Validation agent output: %s", to_loggable(result))
     return result
 
 

@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0168",
+  "employee_id": "EMP-036",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "Boundary test meal",
+  "project_code": "PROJECT-ABC",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0168",
+      "expense_date": "2026-09-08",
+      "expense_category": "MEALS",
+      "merchant_name": "Uber",
+      "claimed_amount": "1500.00",
+      "description": "Boundary test meal",
+      "receipt_file": "invoices/INV-0168.pdf"
+    }
+  ]
+}

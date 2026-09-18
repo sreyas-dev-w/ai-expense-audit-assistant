@@ -24,6 +24,7 @@ free of app-level dependencies.
 """
 import asyncio
 import json
+import logging
 from functools import lru_cache, partial
 from pathlib import Path
 from typing import Any, TypedDict
@@ -33,6 +34,7 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import ValidationError
 
 from app.core.config import settings
+from app.core.logging import to_loggable
 from app.schemas.policy import (
     PolicyAgentError,
     PolicyAgentOutput,
@@ -53,6 +55,8 @@ EMPTY_RESULT_CODE = "missing_result"
 LLM_TIMEOUT_CODE = "llm_timeout"
 INVALID_LLM_OUTPUT_CODE = "invalid_llm_output"
 RETRIEVAL_FAILED_CODE = "retrieval_failed"
+
+logger = logging.getLogger(__name__)
 
 
 class PolicyAgentState(TypedDict):
@@ -238,17 +242,28 @@ async def run_policy_agent(
     llm_client: Any,
 ) -> PolicyAgentResult:
     """Run the Policy RAG Agent once, returning its envelope result."""
+    logger.info(
+        "Policy agent input: claim_id=%s category=%s request=%s",
+        getattr(getattr(request, "claim", None), "claim_id", None),
+        getattr(request, "category", None),
+        to_loggable(request),
+    )
     graph = build_policy_agent(rag_service=rag_service, llm_client=llm_client)
-    final_state = await graph.ainvoke({"request": request})
+    try:
+        final_state = await graph.ainvoke({"request": request})
+    except Exception:
+        logger.exception("Policy agent crashed.")
+        raise
     result = final_state.get("result")
     if result is None:
-        return PolicyAgentResult(
+        result = PolicyAgentResult(
             status=PolicyAgentStatus.ERROR,
             error=PolicyAgentError(
                 code=EMPTY_RESULT_CODE,
                 message="Policy agent finished without producing a result",
             ),
         )
+    logger.info("Policy agent output: %s", to_loggable(result))
     return result
 
 

@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0161",
+  "employee_id": "EMP-040",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "Large equipment",
+  "project_code": "CAPSTONE-002",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0161",
+      "expense_date": "2026-08-21",
+      "expense_category": "EQUIPMENT_RENTAL",
+      "merchant_name": "Marriott",
+      "claimed_amount": "45000.00",
+      "description": "Large equipment",
+      "receipt_file": "invoices/INV-0161.pdf"
+    }
+  ]
+}

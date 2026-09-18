@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0141",
+  "employee_id": "EMP-049",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "accommodation expense",
+  "project_code": "PROJECT-XYZ",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0141",
+      "expense_date": "2026-06-08",
+      "expense_category": "ACCOMMODATION",
+      "merchant_name": "Dominos",
+      "claimed_amount": "4500.00",
+      "description": "accommodation expense",
+      "receipt_file": "invoices/INV-0141.pdf"
+    }
+  ]
+}

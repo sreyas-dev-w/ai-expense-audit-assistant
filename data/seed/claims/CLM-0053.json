@@ -1,0 +1,25 @@
+{
+  "claim_id": "CLM-0053",
+  "employee_id": "EMP-040",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Business flight",
+  "project_code": "OPS-SUPPORT",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0053-01",
+      "item_name": "Flight Ticket",
+      "quantity": 1,
+      "unit_price": "75000.00",
+      "total_amount": "75000.00",
+      "item_category": "Flight",
+      "approved": "Yes",
+      "expense_date": "2026-08-22",
+      "expense_category": "TRAVEL",
+      "merchant_name": "Indigo",
+      "description": "Business flight",
+      "receipt_file": "invoices/INV-0053.jpg"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0173",
+  "employee_id": "EMP-023",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "communications expense",
+  "project_code": "CAPSTONE-002",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0173",
+      "expense_date": "2026-09-04",
+      "expense_category": "COMMUNICATIONS",
+      "merchant_name": "ITC Hotels",
+      "claimed_amount": "-500.00",
+      "description": "communications expense",
+      "receipt_file": "invoices/INV-0173.pdf"
+    }
+  ]
+}

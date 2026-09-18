@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0166",
+  "employee_id": "EMP-017",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "Boundary test meal",
+  "project_code": "CAPSTONE-002",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0166",
+      "expense_date": "2026-08-17",
+      "expense_category": "MEALS",
+      "merchant_name": "Trident",
+      "claimed_amount": "1500.00",
+      "description": "Boundary test meal",
+      "receipt_file": "invoices/INV-0166.pdf"
+    }
+  ]
+}

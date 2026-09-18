@@ -18,6 +18,7 @@ from typing import Any
 from app.agents.audit_agent import build_audit_agent, run_audit_agent
 from app.agents.ocr_agent import OCRAgent
 from app.agents.policy_rag_agent import run_policy_agent
+from app.agents.validation_agent import run_validation_agent
 from app.models.enums import (
     AIDecision,
     AIRunStatus,
@@ -35,6 +36,7 @@ from app.schemas.policy import (
     PolicyAgentStatus,
     PolicyDecision,
 )
+from app.schemas.validation import ValidationAgentStatus
 from app.tools import build_audit_tools
 
 
@@ -56,12 +58,14 @@ def aggregate_audit_result(state: dict[str, Any]) -> AuditResult:
     extraction = state.get("extraction")
     category_data = state.get("category_data")
     policy_result: PolicyAgentResult | None = state.get("policy_result")
+    validation_result = state.get("validation_result")
 
     errors = list(state.get("errors") or [])
     reasons: list[str] = []
     warnings: list[str] = []
     grounding = []
     policy_output = None
+    validation_output = None
     confidence = 0.0
 
     if (
@@ -99,6 +103,30 @@ def aggregate_audit_result(state: dict[str, Any]) -> AuditResult:
         reasons = ["No policy evaluation was produced for this claim."]
         warnings = ["The claim should be reviewed manually."]
 
+    if (
+        validation_result is not None
+        and validation_result.status == ValidationAgentStatus.SUCCESS
+        and validation_result.output is not None
+    ):
+        validation_output = validation_result.output
+        warnings.extend(validation_result.output.warnings)
+    elif (
+        validation_result is not None
+        and validation_result.status == ValidationAgentStatus.ERROR
+        and validation_result.error is not None
+    ):
+        errors.append(
+            AuditAgentError(
+                agent=validation_result.error.agent,
+                code=validation_result.error.code,
+                message=validation_result.error.message,
+            )
+        )
+        warnings.append(
+            f"Validation agent error [{validation_result.error.code}]: "
+            f"{validation_result.error.message}"
+        )
+
     if extraction is not None:
         if not getattr(extraction, "is_receipt", True):
             warnings.append("The provided file could not be verified as a receipt.")
@@ -122,7 +150,7 @@ def aggregate_audit_result(state: dict[str, Any]) -> AuditResult:
         category_data=category_data,
         policy=policy_output,
         grounding_references=grounding,
-        validation=None,  # reserved for the Validation Agent output
+        validation=validation_output,
         errors=errors,
     )
 
@@ -216,17 +244,27 @@ def _currency_or_none(value) -> Currency | None:
 
 
 def build_default_audit_graph():
-    """Wire production services (OCR + Policy agents, DB tools) into the graph."""
-    from app.core.dependencies import get_llm_client, get_policy_rag_service
+    """Wire production services (OCR + Policy/Validation agents, DB tools) into the graph."""
+    from app.core.dependencies import (
+        get_llm_client,
+        get_policy_rag_service,
+        get_validation_context_service,
+    )
 
     rag_service = get_policy_rag_service()
     llm_client = get_llm_client()
     policy_runner = partial(
         run_policy_agent, rag_service=rag_service, llm_client=llm_client
     )
+    validation_runner = partial(
+        run_validation_agent,
+        context_service=get_validation_context_service(),
+        llm_client=llm_client,
+    )
     return build_audit_agent(
         ocr_agent=OCRAgent(),
         policy_runner=policy_runner,
+        validation_runner=validation_runner,
         tools=build_audit_tools(),
         aggregator=aggregate_audit_result,
     )

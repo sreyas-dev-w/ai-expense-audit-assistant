@@ -8,6 +8,7 @@ from functools import lru_cache
 
 from app.services.embedding_service import EmbeddingProvider, GeminiEmbeddingProvider
 from app.services.audit_service import AuditService
+from app.services.claim_service import ClaimSubmissionService
 from app.services.gemini_client import GeminiClient
 from app.services.policy_document_service import PolicyDocumentService
 from app.services.rag_service import PolicyRagService
@@ -35,6 +36,10 @@ def get_policy_document_service() -> PolicyDocumentService:
 
 def get_audit_service() -> AuditService:
     return AuditService()
+
+
+def get_claim_submission_service() -> ClaimSubmissionService:
+    return ClaimSubmissionService()
 
 def get_validation_context_service() -> ValidationContextService:
     return ValidationContextService()

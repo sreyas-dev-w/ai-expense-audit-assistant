@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0171",
+  "employee_id": "EMP-008",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "equipment_rental expense",
+  "project_code": "CAPSTONE-001",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0171",
+      "expense_date": "2026-09-10",
+      "expense_category": "EQUIPMENT_RENTAL",
+      "merchant_name": "ITC Hotels",
+      "claimed_amount": "-500.00",
+      "description": "equipment_rental expense",
+      "receipt_file": "invoices/INV-0171.pdf"
+    }
+  ]
+}

@@ -121,7 +121,9 @@ The domain types above map to PostgreSQL types as follows:
 - `projects.project_code ← employees.project_code`: one project is assigned many employees (nullable; `SET NULL`).
 - `employees.employee_id ← claims.employee_id`: `ON DELETE CASCADE`.
 - `employees.employee_id ← claims.auditer_id`: the auditor assigned to the claim (nullable; `SET NULL`).
-- `claims.claim_id ← agent_response.claim_id`: one claim has many agent responses. `ON DELETE CASCADE`.
+- `claims.claim_id ← agent_response.claim_id`: one claim has **one** `agent_response` row. It is created eagerly when
+  the claim is submitted (stage fields `NULL`) and filled in as the agents respond — policy/validation envelopes and the
+  final AI note. `ON DELETE CASCADE`.
 - `policy_chunking.policy_id` references `policy_documents.policy_id`, `ON DELETE CASCADE` (a policy source has many chunks).
 - `claims.project_code` is a plain indexed column from the source schema (no foreign key).
 
@@ -169,7 +171,7 @@ The domain types above map to PostgreSQL types as follows:
 | `category_data` | JSONB | NOT NULL, default `{}`; structure varies by `category` (see [Expense Category Data](#expense-category-data)) |
 | `employee_id` | VARCHAR(64) | NOT NULL, FK → `employees.employee_id` (CASCADE), indexed |
 | `auditer_id` | VARCHAR(64) | NULL, FK → `employees.employee_id` (SET NULL), indexed |
-| `auditer_notes` | TEXT | NULL |
+| `auditer_notes` | TEXT | NULL, **manual field** filled by the auditing manager (human in the loop); the AI never writes here — its notes live in `agent_response.notes` |
 | `project_code` | VARCHAR(64) | NULL, indexed (no FK) |
 | `claim_amount` | NUMERIC(14,2) | NOT NULL, default `0` |
 | `currency` | ENUM | NOT NULL, default `INR` |
@@ -182,13 +184,18 @@ The domain types above map to PostgreSQL types as follows:
 
 ### `agent_response`
 
+One row per claim, created at claim submission time with `NULL` stage fields and populated as the agents respond:
+`policy_response` / `validation_response` once each agent returns (via `StoreAgentResponseTool` /
+`ValidationService.store_validation_result`), then `notes` with the final human-readable AI recommendation shown to the
+auditor once it is generated. `confidence_score` reflects the policy agent's confidence.
+
 | Column | Type | Constraints |
 |---|---|---|
 | `id` | INTEGER + IDENTITY | PK |
 | `claim_id` | INTEGER | NOT NULL, FK → `claims.claim_id` (CASCADE), indexed |
 | `validation_response` | JSONB | NULL, structured agent output |
 | `policy_response` | JSONB | NULL, structured agent output |
-| `notes` | TEXT | NULL |
+| `notes` | TEXT | NULL, AI note displayed to the auditor/manager |
 | `confidence_score` | NUMERIC(5,2) | NULL |
 
 ### `policy_documents`

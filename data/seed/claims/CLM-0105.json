@@ -1,0 +1,43 @@
+{
+  "claim_id": "CLM-0105",
+  "employee_id": "EMP-013",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Office supplies",
+  "project_code": "DIGITAL-AI",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0105-01",
+      "item_name": "Printer Paper",
+      "quantity": 1,
+      "unit_price": "400.00",
+      "total_amount": "400.00",
+      "item_category": "Supply Item",
+      "approved": "Yes",
+      "expense_date": "2026-09-06",
+      "expense_category": "SUPPLIES",
+      "merchant_name": "Staples",
+      "description": "Office supplies",
+      "receipt_file": "invoices/INV-0105.jpg"
+    },
+    {
+      "line_id": "LINE-0105-02",
+      "item_name": "USB Drive",
+      "quantity": 1,
+      "unit_price": "500.00",
+      "total_amount": "500.00",
+      "item_category": "Supply Item",
+      "approved": "Yes"
+    },
+    {
+      "line_id": "LINE-0105-03",
+      "item_name": "Folders",
+      "quantity": 1,
+      "unit_price": "200.00",
+      "total_amount": "200.00",
+      "item_category": "Supply Item",
+      "approved": "Yes"
+    }
+  ]
+}

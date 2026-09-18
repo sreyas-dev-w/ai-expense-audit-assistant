@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0146",
+  "employee_id": "EMP-009",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "travel expense",
+  "project_code": "CAPSTONE-002",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0146",
+      "expense_date": "2026-08-17",
+      "expense_category": "TRAVEL",
+      "merchant_name": "Hyatt",
+      "claimed_amount": "30000.00",
+      "description": "travel expense",
+      "receipt_file": "invoices/INV-0146.pdf"
+    }
+  ]
+}

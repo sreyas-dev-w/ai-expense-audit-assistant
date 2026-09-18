@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0145",
+  "employee_id": "EMP-032",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "meals expense",
+  "project_code": "PROJECT-ABC",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0145",
+      "expense_date": "2026-08-17",
+      "expense_category": "MEALS",
+      "merchant_name": "SpiceJet",
+      "claimed_amount": "1200.00",
+      "description": "meals expense",
+      "receipt_file": "invoices/INV-0145.pdf"
+    }
+  ]
+}

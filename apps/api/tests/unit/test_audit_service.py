@@ -11,6 +11,15 @@ from app.schemas.policy import (
     PolicyAgentStatus,
     PolicyDecision,
 )
+from app.schemas.validation import (
+    ValidationAgentError,
+    ValidationAgentResult,
+    ValidationAgentStatus,
+    ValidationFinding,
+    ValidationFindingCategory,
+    ValidationSeverity,
+    ValidationVerdict,
+)
 from app.services.audit_service import aggregate_audit_result
 from tests.conftest import (
     make_food_audit_context,
@@ -31,6 +40,35 @@ def _state(**overrides) -> dict:
     }
     state.update(overrides)
     return state
+
+
+def make_validation_result(
+    verdict: ValidationVerdict = ValidationVerdict.PASS, *, warnings=None, findings=None
+):
+    from app.schemas.validation import (
+        ValidationAgentOutput,
+        ValidationVerdict as VV,
+    )
+
+    return ValidationAgentResult(
+        status=ValidationAgentStatus.SUCCESS,
+        output=ValidationAgentOutput(
+            verdict=verdict,
+            confidence=0.8,
+            findings=[
+                ValidationFinding(
+                    rule_id="amount_range",
+                    severity=ValidationSeverity.WARNING,
+                    category=ValidationFindingCategory.AMOUNT,
+                    description=description,
+                )
+                for description in (findings or [])
+            ],
+            checks=[],
+            warnings=list(warnings or []),
+            summary="Deterministic validation checks completed.",
+        ),
+    )
 
 
 def test_flag_for_review_maps_to_review_medium():
@@ -128,6 +166,50 @@ def test_missing_claim_amount_adds_warning():
     extraction.claim_amount = None
     result = aggregate_audit_result(_state(extraction=extraction))
     assert any("amount" in w.lower() for w in result.warnings)
+
+
+def test_validation_output_is_preserved():
+    validation = make_validation_result(
+        verdict=ValidationVerdict.FLAG_FOR_REVIEW,
+        warnings=["receipt appears edited"],
+    )
+    result = aggregate_audit_result(_state(validation_result=validation))
+
+    assert result.validation is not None
+    assert result.validation.verdict == ValidationVerdict.FLAG_FOR_REVIEW
+    assert any("receipt appears edited" in w for w in result.warnings)
+
+
+def test_validation_fail_output_is_preserved_without_override():
+    validation = make_validation_result(
+        verdict=ValidationVerdict.FAIL,
+        findings=["Dinner amount is outside the allowed range."],
+    )
+    result = aggregate_audit_result(_state(validation_result=validation))
+
+    assert result.validation is not None
+    assert result.validation.verdict == ValidationVerdict.FAIL
+    assert result.ai_decision == AIDecision.REVIEW  # policy remains the driver
+
+
+def test_validation_error_adds_error_and_warning():
+    validation = ValidationAgentResult(
+        status=ValidationAgentStatus.ERROR,
+        error=ValidationAgentError(
+            code="validation_persist_error", message="storage failed"
+        ),
+    )
+    result = aggregate_audit_result(_state(validation_result=validation))
+
+    assert result.validation is None
+    assert result.errors[-1].agent == "validation_agent"
+    assert result.errors[-1].code == "validation_persist_error"
+    assert any("validation" in w.lower() for w in result.warnings)
+
+
+def test_missing_validation_result_keeps_none():
+    result = aggregate_audit_result(_state())
+    assert result.validation is None
 
 
 def test_aggregation_message_mentioning_both_reasons_and_warnings():

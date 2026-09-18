@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0154",
+  "employee_id": "EMP-050",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "Minimal expense",
+  "project_code": "CAPSTONE-001",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0154",
+      "expense_date": "2026-08-21",
+      "expense_category": "MEALS",
+      "merchant_name": "SpiceJet",
+      "claimed_amount": "0.01",
+      "description": "Minimal expense",
+      "receipt_file": "invoices/INV-0154.pdf"
+    }
+  ]
+}

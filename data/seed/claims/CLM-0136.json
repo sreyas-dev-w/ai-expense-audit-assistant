@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0136",
+  "employee_id": "EMP-011",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "communications expense",
+  "project_code": "CAPSTONE-002",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0136",
+      "expense_date": "2026-07-28",
+      "expense_category": "COMMUNICATIONS",
+      "merchant_name": "Uber",
+      "claimed_amount": "400.00",
+      "description": "communications expense",
+      "receipt_file": "invoices/INV-0136.pdf"
+    }
+  ]
+}

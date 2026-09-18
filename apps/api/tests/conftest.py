@@ -195,6 +195,12 @@ class FakeSession:
         self._next_ids = next_ids
         self._added: list = []
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.close()
+
     async def get(self, model, pk):
         return self._store.get((model.__tablename__, pk))
 
@@ -204,12 +210,32 @@ class FakeSession:
     async def flush(self):
         while self._added:
             obj = self._added.pop(0)
-            table = obj.__tablename__
-            for column_key in ("id", "claim_id"):
-                if getattr(obj, column_key, None) is None and column_key != "claim_id":
-                    obj.id = self._next_id(table)
-                    break
-            self._store[(table, obj.id)] = obj
+            pk_name = _primary_key_name(obj)
+            if getattr(obj, pk_name, None) is None:
+                setattr(obj, pk_name, self._next_id(obj.__tablename__))
+            self._store[(obj.__tablename__, getattr(obj, pk_name))] = obj
+
+    async def execute(self, statement, params=None):
+        """Support simple single-table ``select`` statements over the store.
+
+        Handles equality ``where`` clauses, a single ``order_by`` (asc/desc)
+        and ``limit`` — the shape used by ``AgentResponseRepository`` lookups.
+        """
+        table = _statement_table(statement)
+        rows = [obj for (name, _), obj in self._store.items() if name == table]
+        for col_name, value in _statement_equalities(statement):
+            rows = [obj for obj in rows if getattr(obj, col_name, None) == value]
+        order_by = _statement_order_by(statement)
+        if order_by is not None:
+            col_name, descending = order_by
+            rows.sort(
+                key=lambda obj: getattr(obj, col_name, None),
+                reverse=descending,
+            )
+        limit = getattr(statement, "_limit", None)
+        if limit:
+            rows = rows[:limit]
+        return FakeResult(rows)
 
     async def commit(self):
         await self.flush()
@@ -224,6 +250,86 @@ class FakeSession:
         next_id = self._next_ids.setdefault(table, 1)
         self._next_ids[table] = next_id + 1
         return next_id
+
+
+class FakeResult:
+    """Minimal stand-in for ``sqlalchemy.engine.Result``."""
+
+    def __init__(self, rows: list):
+        self._rows = list(rows)
+
+    def scalar_one_or_none(self):
+        if not self._rows:
+            return None
+        if len(self._rows) > 1:
+            from sqlalchemy.exc import MultipleResultsFound
+
+            raise MultipleResultsFound()
+        return self._rows[0]
+
+    def scalars(self):
+        return FakeScalars(self._rows)
+
+    def scalar(self):
+        return self._rows[0] if self._rows else None
+
+    def first(self):
+        return self._rows[0] if self._rows else None
+
+    def all(self):
+        return list(self._rows)
+
+
+class FakeScalars:
+    """Minimal stand-in for ``ChunkedScalarResult`` returned by ``Result.scalars``."""
+
+    def __init__(self, rows: list):
+        self._rows = list(rows)
+
+    def first(self):
+        return self._rows[0] if self._rows else None
+
+    def all(self):
+        return list(self._rows)
+
+
+def _statement_table(statement) -> str:
+    for column in statement._raw_columns:
+        tablename = getattr(column, "__tablename__", None)
+        if tablename is None and hasattr(column, "columns"):
+            tablename = column.name
+        if tablename is not None:
+            return tablename
+    raise NotImplementedError(
+        "FakeSession.execute only supports single-model select statements"
+    )
+
+
+def _statement_equalities(statement):
+    for criterion in statement._where_criteria:
+        left = getattr(criterion, "left", None)
+        right = getattr(criterion, "right", None)
+        if left is None or right is None or not hasattr(left, "name"):
+            continue
+        yield left.name, getattr(right, "value", right)
+
+
+def _statement_order_by(statement):
+    clauses = statement._order_by_clauses
+    if not clauses:
+        return None
+    from sqlalchemy.sql.operators import desc_op
+
+    clause = clauses[0]
+    element = getattr(clause, "element", clause)
+    descending = getattr(clause, "modifier", None) is desc_op
+    return getattr(element, "name", None), descending
+
+
+def _primary_key_name(obj) -> str:
+    from sqlalchemy import inspect
+
+    return inspect(obj).mapper.primary_key[0].key
 
 
 def make_fake_session_factory(store: dict, next_ids: dict | None = None):

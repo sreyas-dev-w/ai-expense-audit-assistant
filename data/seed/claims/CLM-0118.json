@@ -1,0 +1,25 @@
+{
+  "claim_id": "CLM-0118",
+  "employee_id": "EMP-008",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Business meal",
+  "project_code": "DIGITAL-AI",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0118-01",
+      "item_name": "Naan Bread",
+      "quantity": 1,
+      "unit_price": "100.00",
+      "total_amount": "100.00",
+      "item_category": "Meal Item",
+      "approved": "Yes",
+      "expense_date": "2026-07-29",
+      "expense_category": "MEALS",
+      "merchant_name": "Taj Hotel",
+      "description": "Business meal",
+      "receipt_file": "invoices/INV-0118.jpg"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "claim_id": "CLM-0113",
+  "employee_id": "EMP-048",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Office supplies",
+  "project_code": "PROJECT-XYZ",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0113-01",
+      "item_name": "Personal Headphones",
+      "quantity": 1,
+      "unit_price": "4000.00",
+      "total_amount": "4000.00",
+      "item_category": "Supply Item",
+      "approved": "No",
+      "expense_date": "2026-08-24",
+      "expense_category": "SUPPLIES",
+      "merchant_name": "Staples",
+      "description": "Office supplies",
+      "receipt_file": "invoices/INV-0113.jpg"
+    }
+  ]
+}

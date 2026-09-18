@@ -1,0 +1,34 @@
+{
+  "claim_id": "CLM-0022",
+  "employee_id": "EMP-033",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Business meal",
+  "project_code": "DIGITAL-AI",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0022-01",
+      "item_name": "Grilled Chicken",
+      "quantity": 1,
+      "unit_price": "650.00",
+      "total_amount": "650.00",
+      "item_category": "Meal Item",
+      "approved": "Yes",
+      "expense_date": "2026-08-31",
+      "expense_category": "MEALS",
+      "merchant_name": "Marriott",
+      "description": "Business meal",
+      "receipt_file": "invoices/INV-0022.jpg"
+    },
+    {
+      "line_id": "LINE-0022-02",
+      "item_name": "Vegetable Biryani",
+      "quantity": 1,
+      "unit_price": "450.00",
+      "total_amount": "450.00",
+      "item_category": "Meal Item",
+      "approved": "Yes"
+    }
+  ]
+}

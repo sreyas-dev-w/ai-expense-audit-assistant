@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0165",
+  "employee_id": "EMP-012",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "Boundary test meal",
+  "project_code": "PROJECT-XYZ",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0165",
+      "expense_date": "2026-09-06",
+      "expense_category": "MEALS",
+      "merchant_name": "Dominos",
+      "claimed_amount": "1500.00",
+      "description": "Boundary test meal",
+      "receipt_file": "invoices/INV-0165.pdf"
+    }
+  ]
+}

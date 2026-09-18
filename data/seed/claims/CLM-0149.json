@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0149",
+  "employee_id": "EMP-027",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "meals expense",
+  "project_code": "PROJECT-XYZ",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0149",
+      "expense_date": "2026-08-17",
+      "expense_category": "MEALS",
+      "merchant_name": "IRCTC",
+      "claimed_amount": "1200.00",
+      "description": "meals expense",
+      "receipt_file": "invoices/INV-0149.pdf"
+    }
+  ]
+}

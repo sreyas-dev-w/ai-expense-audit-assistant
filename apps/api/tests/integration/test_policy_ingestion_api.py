@@ -15,12 +15,36 @@ from sqlalchemy import select
 from app.db.session import async_session_factory
 from app.main import app
 from app.models.policy_chunk import PolicyChunk
+from app.models.policy_document import PolicyDocument
 from app.services.policy_document_service import PolicyDocumentService
 from app.services.rag_service import PolicyRagService
 
 from tests.conftest import FakeEmbedder
 
 SEED_PDF = Path(__file__).resolve().parents[4] / "data" / "seed" / "expense_policy_v1.pdf"
+
+
+@pytest.fixture
+async def seeded_policy_ids() -> set[int]:
+    """policy_ids that existed *before* the test, so cleanup never touches them.
+
+    These tests run against the real (shared) database. Ingestion de-dupes by
+    file hash, so ``ingest_pdf`` may return the id of a document we did not
+    create here. Cleanup must only delete documents the test itself created;
+    deleting a pre-existing policy would destroy data we do not own.
+    """
+    async with async_session_factory() as session:
+        ids = (await session.execute(select(PolicyDocument.policy_id))).scalars().all()
+    return set(ids)
+
+
+async def _delete_if_created(
+    policy_id: int | None,
+    seeded_policy_ids: set[int],
+    policy_service: PolicyDocumentService,
+) -> None:
+    if policy_id is not None and policy_id not in seeded_policy_ids:
+        await policy_service.delete_document(policy_id)
 
 
 @pytest.fixture
@@ -61,7 +85,7 @@ async def _chunk_contents(policy_id: int) -> list[tuple[int, str]]:
         return [(row.id, row.content) for row in rows]
 
 
-async def test_ingest_upload_and_list_documents(client, policy_service):
+async def test_ingest_upload_and_list_documents(client, policy_service, seeded_policy_ids):
     policy_id = None
     try:
         response = await client.post(
@@ -83,8 +107,7 @@ async def test_ingest_upload_and_list_documents(client, policy_service):
         assert detail.status_code == 200
         assert detail.json()["status"] == "completed"
     finally:
-        if policy_id is not None:
-            await policy_service.delete_document(policy_id)
+        await _delete_if_created(policy_id, seeded_policy_ids, policy_service)
 
 
 async def test_ingest_rejects_non_pdf(client):
@@ -95,7 +118,7 @@ async def test_ingest_rejects_non_pdf(client):
     assert response.status_code == 400
 
 
-async def test_dedupe_and_force_reingest(client, policy_service):
+async def test_dedupe_and_force_reingest(client, policy_service, seeded_policy_ids):
     content = SEED_PDF.read_bytes()
     policy_id = None
     try:
@@ -124,11 +147,10 @@ async def test_dedupe_and_force_reingest(client, policy_service):
         assert forced.json()["reingested"] is True
         assert forced.json()["chunk_count"] == first.json()["chunk_count"]
     finally:
-        if policy_id is not None:
-            await policy_service.delete_document(policy_id)
+        await _delete_if_created(policy_id, seeded_policy_ids, policy_service)
 
 
-async def test_search_returns_exact_match_first(client, policy_service):
+async def test_search_returns_exact_match_first(client, policy_service, seeded_policy_ids):
     policy_id = None
     try:
         ingest = await client.post(
@@ -151,11 +173,10 @@ async def test_search_returns_exact_match_first(client, policy_service):
         assert top["chunk_id"] == chunk_id
         assert top["similarity_score"] > 0.99
     finally:
-        if policy_id is not None:
-            await policy_service.delete_document(policy_id)
+        await _delete_if_created(policy_id, seeded_policy_ids, policy_service)
 
 
-async def test_search_respects_threshold_and_policy_filter(client, policy_service):
+async def test_search_respects_threshold_and_policy_filter(client, policy_service, seeded_policy_ids):
     policy_id = None
     try:
         ingest = await client.post(
@@ -183,11 +204,15 @@ async def test_search_respects_threshold_and_policy_filter(client, policy_servic
         )
         assert wrong_policy.json()["count"] == 0
     finally:
-        if policy_id is not None:
-            await policy_service.delete_document(policy_id)
+        await _delete_if_created(policy_id, seeded_policy_ids, policy_service)
 
 
-async def test_get_and_delete(client, policy_service):
+async def test_get_and_delete(client, policy_service, seeded_policy_ids):
+    if seeded_policy_ids:
+        pytest.skip(
+            "Policy documents already exist; ingest would re-use a pre-existing "
+            "document and this test deletes it, so it is skipped against live data"
+        )
     ingest = await client.post(
         "/api/v1/policies/documents",
         files={"file": (SEED_PDF.name, SEED_PDF.read_bytes(), "application/pdf")},

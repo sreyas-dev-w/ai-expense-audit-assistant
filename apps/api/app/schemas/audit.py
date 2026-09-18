@@ -28,6 +28,7 @@ from app.models.enums import (
     JobLevel,
 )
 from app.schemas.policy import PolicyAgentOutput, PolicyReference
+from app.schemas.validation import ValidationAgentOutput
 
 
 class ClaimAuditContext(BaseModel):
@@ -66,7 +67,7 @@ class ClaimWriteResult(BaseModel):
 
 
 class AgentResponseRecord(BaseModel):
-    """The persisted ``agent_response`` row created by the audit run."""
+    """The claim's ``agent_response`` row written by the audit run."""
 
     id: int
     claim_id: int
@@ -119,8 +120,8 @@ class AuditResult(BaseModel):
     category_data: dict[str, Any] | None = None
     policy: PolicyAgentOutput | None = None
     grounding_references: list[PolicyReference] = Field(default_factory=list)
-    validation: Any | None = Field(
+    validation: ValidationAgentOutput | None = Field(
         default=None,
-        description="Reserved: structured Validation Agent output (not implemented yet).",
+        description="Structured Validation Agent output for auditability.",
     )
     errors: list[AuditAgentError] = Field(default_factory=list)

@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0156",
+  "employee_id": "EMP-052",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "Minimal expense",
+  "project_code": "CAPSTONE-002",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0156",
+      "expense_date": "2026-09-07",
+      "expense_category": "MEALS",
+      "merchant_name": "Leela",
+      "claimed_amount": "0.01",
+      "description": "Minimal expense",
+      "receipt_file": "invoices/INV-0156.pdf"
+    }
+  ]
+}
