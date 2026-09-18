@@ -187,6 +187,21 @@ class FakeValidationRunner:
         return self._result
 
 
+class FakeAssessmentRunner:
+    """Stand-in for the Audit Agent's LLM assessment runner."""
+
+    def __init__(self, assessment=None, error=None):
+        self._assessment = assessment if assessment is not None else make_assessment()
+        self._error = error
+        self.last_kwargs = None
+
+    async def __call__(self, **kwargs):
+        self.last_kwargs = kwargs
+        if self._error is not None:
+            raise self._error
+        return self._assessment
+
+
 class FakeSession:
     """In-memory ``AsyncSession`` double keyed by (table name, primary key)."""
 
@@ -482,6 +497,23 @@ def make_policy_result(decision=PolicyDecision.FLAG_FOR_REVIEW, *, warnings=None
             ],
             summary="Dinner claim exceeds the per-meal limit.",
         ),
+    )
+
+
+def make_assessment(
+    decision: str = "approve",
+    priority: str = "low",
+    *,
+    summary: str = "Dinner claim is compliant with policy and validation checks.",
+    confidence: float = 0.95,
+):
+    from app.schemas.assessment import AuditAssessment
+
+    return AuditAssessment(
+        summary=summary,
+        ai_decision=decision,
+        priority=priority,
+        confidence=confidence,
     )
 
 

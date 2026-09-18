@@ -11,7 +11,12 @@ from app.tools.claim_tools import (
     UpdateClaimResultTool,
 )
 from app.tools.receipt_tools import FetchReceiptTool
-from app.tools.response_tools import StoreAgentResponseTool, StoreExtractionTool
+from app.tools.response_tools import (
+    GetAgentResponseTool,
+    StoreAgentResponseTool,
+    StoreAssessmentTool,
+    StoreExtractionTool,
+)
 
 
 def build_audit_tools(*, session_factory=None) -> dict[str, AuditTool]:
@@ -27,6 +32,8 @@ def build_audit_tools(*, session_factory=None) -> dict[str, AuditTool]:
         FetchReceiptTool(),
         StoreExtractionTool(session_factory=session_factory),
         StoreAgentResponseTool(session_factory=session_factory),
+        GetAgentResponseTool(session_factory=session_factory),
+        StoreAssessmentTool(session_factory=session_factory),
         UpdateClaimResultTool(session_factory=session_factory),
     ]
     return {tool.name: tool for tool in tools}
@@ -42,4 +49,6 @@ __all__ = [
     "FetchReceiptTool",
     "StoreExtractionTool",
     "StoreAgentResponseTool",
+    "GetAgentResponseTool",
+    "StoreAssessmentTool",
 ]

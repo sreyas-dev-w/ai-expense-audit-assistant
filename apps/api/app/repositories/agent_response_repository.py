@@ -111,6 +111,25 @@ class AgentResponseRepository:
             row.notes = notes
         return row
 
+    async def update_assessment(
+        self,
+        *,
+        claim_id: int,
+        notes: str,
+        confidence_score: Decimal | None,
+    ) -> AgentResponse:
+        """Store the AI assessment's note + confidence on the claim's row.
+
+        Deliberately narrow: only ``notes`` and ``confidence_score`` are
+        written. The existing ``validation_response`` and ``policy_response``
+        columns are never touched by this stage.
+        """
+        row = await self.get_or_create_for_claim(claim_id)
+        row.notes = notes
+        if confidence_score is not None:
+            row.confidence_score = confidence_score
+        return row
+
     async def update_notes(self, *, claim_id: int, notes: str) -> AgentResponse:
         """Store the final AI note on the claim's row."""
         row = await self.get_or_create_for_claim(claim_id)

@@ -39,6 +39,7 @@ def _build_graph(store, next_ids=None, **overrides):
         aggregator=overrides.pop("aggregator", aggregate_audit_result),
         tools=tools,
         validation_runner=overrides.pop("validation_runner", None),
+        assessment_runner=overrides.pop("assessment_runner", None),
     )
 
 
@@ -93,6 +94,7 @@ async def test_happy_path_completes_and_persists(tmp_path):
 
     final_state = await graph.ainvoke({"claim_id": CLAIM_ID})
     assert final_state["validation_skipped"] is True
+    assert final_state["assessment_skipped"] is True
     assert isinstance(policy.last_request, FoodMealsPolicyEvaluation)
     assert policy.last_request.claim.employee_id == "EMP-001"
     assert policy.last_request.category_data.merchant_name == "Zulu Bistro"
@@ -259,3 +261,158 @@ async def test_aggregation_warnings_bump_priority(tmp_path):
 
     assert result.ai_decision == AIDecision.REVIEW
     assert result.priority == ClaimPriority.HIGH
+
+
+# ---------------------------------------------------------------------------
+# LLM assessment node
+# ---------------------------------------------------------------------------
+
+
+async def test_assessment_llm_flows_through_and_persists(tmp_path):
+    from decimal import Decimal
+
+    from tests.conftest import FakeAssessmentRunner, make_assessment
+
+    receipt = tmp_path / "receipt.jpg"
+    receipt.write_bytes(b"fake-jpeg-bytes")
+    store = {("claims", CLAIM_ID): make_food_claim_row(receipt_url=str(receipt))}
+    store[("employees", "EMP-001")] = make_employee_row()
+    next_ids = {}
+
+    assessment = make_assessment(
+        decision="reject",
+        priority="high",
+        summary="The dinner exceeds the per-meal limit; recommend rejection.",
+        confidence=0.9,
+    )
+    runner = FakeAssessmentRunner(assessment=assessment)
+    graph = _build_graph(store, next_ids, assessment_runner=runner)
+
+    final_state = await graph.ainvoke({"claim_id": CLAIM_ID})
+    result = final_state["final_result"]
+
+    assert final_state["assessment_skipped"] is False
+    assert final_state["assessment"] is not None
+    assert result.ai_decision == AIDecision.REJECT
+    assert result.priority == ClaimPriority.HIGH
+    assert result.confidence == 0.9
+    assert result.notes == assessment.summary
+    assert result.assessment is not None
+    assert result.assessment.ai_decision == AIDecision.REJECT
+
+    # LLM inputs included claim, extraction and the policy result.
+    assert runner.last_kwargs["claim"].claim_id == CLAIM_ID
+    assert runner.last_kwargs["extraction"] is not None
+    assert runner.last_kwargs["policy_result"] is not None
+
+    claim = store[("claims", CLAIM_ID)]
+    assert claim.ai_decision == AIDecision.REJECT
+    assert claim.priority == ClaimPriority.HIGH
+    assert claim.ai_run_status == AIRunStatus.COMPLETED
+
+    response = store[("agent_response", 1)]
+    assert response.notes == assessment.summary
+    assert response.confidence_score == Decimal("0.90")
+
+
+async def test_assessment_does_not_touch_policy_or_validation_columns(tmp_path):
+    from tests.conftest import FakeAssessmentRunner
+
+    receipt = tmp_path / "receipt.jpg"
+    receipt.write_bytes(b"fake-jpeg-bytes")
+    store = {("claims", CLAIM_ID): make_food_claim_row(receipt_url=str(receipt))}
+    store[("employees", "EMP-001")] = make_employee_row()
+    next_ids = {}
+
+    validation = FakeValidationRunner(result={"validated": True})
+    assessment_runner = FakeAssessmentRunner()
+    graph = _build_graph(
+        store,
+        next_ids,
+        validation_runner=validation,
+        assessment_runner=assessment_runner,
+    )
+
+    await graph.ainvoke({"claim_id": CLAIM_ID})
+
+    response = store[("agent_response", 1)]
+    assert response.validation_response == {"validated": True}
+    assert response.policy_response["output"]["decision"] == "FLAG_FOR_REVIEW"
+    # The assessment only wrote notes + confidence; the stored envelopes are intact.
+    assert response.validation_response == {"validated": True}
+    assert response.policy_response["output"]["decision"] == "FLAG_FOR_REVIEW"
+
+
+async def test_assessment_llm_failure_falls_back_to_deterministic(tmp_path):
+    from app.services.gemini_client import GeminiLLMError
+    from tests.conftest import FakeAssessmentRunner
+
+    receipt = tmp_path / "receipt.jpg"
+    receipt.write_bytes(b"fake-jpeg-bytes")
+    store = {("claims", CLAIM_ID): make_food_claim_row(receipt_url=str(receipt))}
+    store[("employees", "EMP-001")] = make_employee_row()
+    next_ids = {}
+
+    runner = FakeAssessmentRunner(
+        error=GeminiLLMError("Gemini API unavailable", code="gemini_unavailable")
+    )
+    graph = _build_graph(store, next_ids, assessment_runner=runner)
+
+    final_state = await graph.ainvoke({"claim_id": CLAIM_ID})
+    result = final_state["final_result"]
+
+    # Decision-support: run completes with the deterministic fallback result.
+    assert result.ai_run_status == AIRunStatus.COMPLETED
+    assert result.ai_decision == AIDecision.REVIEW
+    assert result.priority == ClaimPriority.MEDIUM
+    assert final_state["assessment"] is None
+    assert any(e.code == "gemini_unavailable" for e in result.errors)
+
+    response = store[("agent_response", 1)]
+    assert "review" in response.notes
+
+
+async def test_assessment_node_falls_back_to_db_when_state_is_sparse(tmp_path):
+    from decimal import Decimal
+
+    from app.agents.audit_agent import assess_result_node
+    from app.models.agent_response import AgentResponse
+    from tests.conftest import FakeAssessmentRunner
+
+    store = {("claims", CLAIM_ID): make_food_claim_row()}
+    store[("employees", "EMP-001")] = make_employee_row()
+    stored_policy = {
+        "status": "success",
+        "output": {"decision": "FLAG_FOR_REVIEW", "confidence": 0.85},
+    }
+    store[("agent_response", 1)] = AgentResponse(
+        id=1,
+        claim_id=CLAIM_ID,
+        policy_response=stored_policy,
+        validation_response={"validated": True},
+    )
+    tools = build_audit_tools_for(store, {})
+    runner = FakeAssessmentRunner()
+
+    await assess_result_node(
+        state={
+            "claim_id": CLAIM_ID,
+            "claim": None,
+            "extraction": None,
+            "policy_result": None,
+            "validation_result": None,
+        },
+        assessment_runner=runner,
+        tools=tools,
+    )
+
+    # The runner received the envelopes loaded from the agent_response row.
+    assert runner.last_kwargs["policy_result"] == stored_policy
+    assert runner.last_kwargs["validation_result"] == {"validated": True}
+
+    # The assessment write updates only notes + confidence on the same row.
+    response = store[("agent_response", 1)]
+    assert response.notes == runner._assessment.summary
+    assert response.confidence_score == Decimal("0.95")
+    assert response.policy_response == stored_policy
+    assert response.validation_response == {"validated": True}

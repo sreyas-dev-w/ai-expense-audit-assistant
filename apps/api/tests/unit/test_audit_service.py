@@ -22,6 +22,7 @@ from app.schemas.validation import (
 )
 from app.services.audit_service import aggregate_audit_result
 from tests.conftest import (
+    make_assessment,
     make_food_audit_context,
     make_policy_result,
     sample_food_extraction,
@@ -227,3 +228,51 @@ def test_aggregation_message_mentioning_both_reasons_and_warnings():
 def test_grounding_references_are_preserved():
     result = aggregate_audit_result(_state())
     assert [r.chunk_id for r in result.grounding_references] == [1]
+
+
+# ---------------------------------------------------------------------------
+# LLM assessment precedence
+# ---------------------------------------------------------------------------
+
+
+def test_assessment_overrides_deterministic_values():
+    assessment = make_assessment(
+        decision="approve",
+        priority="low",
+        summary="The claim clearly complies with all checks.",
+        confidence=0.98,
+    )
+    result = aggregate_audit_result(_state(assessment=assessment))
+
+    assert result.ai_decision == AIDecision.APPROVE
+    assert result.priority == ClaimPriority.LOW
+    assert result.confidence == 0.98
+    assert result.notes == assessment.summary
+    assert result.assessment is not None
+    assert result.assessment.priority == ClaimPriority.LOW
+    # Deterministic reasons/warnings from the policy output are retained (informational).
+    assert any("per-meal limit" in r for r in result.reasons)
+
+
+def test_assessment_absent_keeps_deterministic_path():
+    result = aggregate_audit_result(_state())
+
+    assert result.ai_decision == AIDecision.REVIEW
+    assert result.priority == ClaimPriority.MEDIUM
+    assert result.confidence == 0.85
+    assert result.assessment is None
+    assert result.notes and "review" in result.notes
+
+
+def test_assessment_reject_drives_high_priority():
+    assessment = make_assessment(
+        decision="reject",
+        priority="high",
+        summary="Binding policy violation; reject the claim.",
+        confidence=0.8,
+    )
+    result = aggregate_audit_result(_state(assessment=assessment))
+
+    assert result.ai_decision == AIDecision.REJECT
+    assert result.priority == ClaimPriority.HIGH
+    assert result.notes == assessment.summary

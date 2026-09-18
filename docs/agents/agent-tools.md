@@ -33,6 +33,8 @@ Tools expose narrow, well-defined operations. The Audit Agent is built with the 
 | `fetch_receipt` | Read the claim's receipt bytes (http(s) or local path) into the OCR stage |
 | `store_extraction` | Persist the OCR extraction onto `claims.category_data` |
 | `store_agent_response` | Write the policy / validation envelope into `agent_response` (JSONB + confidence) |
+| `get_agent_response` | Read the stored policy / validation envelopes from `agent_response` (assessment fallback source) |
+| `store_assessment` | Write the LLM assessment note + confidence onto `agent_response` (never `policy_response` / `validation_response`) |
 | `update_claim_result` | Persist the final aggregated decision support onto the claim at the end of the run |
 
 Each tool opens a short-lived database transaction that commits/rollbacks/closes around a single operation (no

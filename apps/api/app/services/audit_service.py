@@ -4,18 +4,19 @@
 other caller uses to run an audit for a claim. It wires production services and
 tools into the Audit Agent graph and wraps the graph invocation.
 
-``aggregate_audit_result`` is the deterministic "reasoning" step that turns the
-stage outputs (extraction, policy evaluation, ...) into the final
-decision-support result persisted onto the claim (ai_decision, priority, notes,
-confidence). It is pure and unit-testable; a language-model reasoning node can
-be swapped in later without changing the surrounding workflow
-(``docs/backend/auditability.md``).
+``aggregate_audit_result`` turns the stage outputs (extraction, policy
+evaluation, ...) into the final decision-support result persisted onto the
+claim (ai_decision, priority, notes, confidence). It remains the deterministic
+fallback and envelope builder; when the Audit Agent's LLM assessment node
+succeeded it overrides ai_decision / priority / confidence / notes with the
+LLM-recommended values (``docs/backend/auditability.md``).
 """
 from decimal import Decimal
 from functools import partial
 from typing import Any
 
 from app.agents.audit_agent import build_audit_agent, run_audit_agent
+from app.agents.audit_assessment import run_audit_assessment
 from app.agents.ocr_agent import OCRAgent
 from app.agents.policy_rag_agent import run_policy_agent
 from app.agents.validation_agent import run_validation_agent
@@ -50,8 +51,11 @@ def aggregate_audit_result(state: dict[str, Any]) -> AuditResult:
 
     Maps the Policy RAG decision onto the AI recommendation, folds extraction
     quality signals into warnings, derives a priority and builds human-readable
-    notes. Policy errors are preserved as first-class errors while the run
-    still completes (decision support, not autonomous approval).
+    notes. When the LLM assessment node produced a valid ``assessment`` its
+    ai_decision / priority / confidence / summary win over the deterministic
+    derivation; the deterministic values otherwise stand. Policy errors are
+    preserved as first-class errors while the run still completes (decision
+    support, not autonomous approval).
     """
     claim = state.get("claim")
     claim_id = state.get("claim_id")
@@ -59,6 +63,7 @@ def aggregate_audit_result(state: dict[str, Any]) -> AuditResult:
     category_data = state.get("category_data")
     policy_result: PolicyAgentResult | None = state.get("policy_result")
     validation_result = state.get("validation_result")
+    assessment = state.get("assessment")
 
     errors = list(state.get("errors") or [])
     reasons: list[str] = []
@@ -67,6 +72,7 @@ def aggregate_audit_result(state: dict[str, Any]) -> AuditResult:
     policy_output = None
     validation_output = None
     confidence = 0.0
+    ai_decision: AIDecision
 
     if (
         policy_result is not None
@@ -136,6 +142,12 @@ def aggregate_audit_result(state: dict[str, Any]) -> AuditResult:
     priority = _derive_priority(ai_decision, len(warnings))
     notes = _build_notes(claim_id, ai_decision, priority, reasons, warnings)
 
+    if assessment is not None:
+        ai_decision = assessment.ai_decision
+        priority = assessment.priority
+        confidence = max(0.0, min(1.0, float(assessment.confidence)))
+        notes = assessment.summary
+
     return AuditResult(
         claim_id=claim_id,
         status=ClaimStatus.IN_AUDIT,
@@ -151,6 +163,7 @@ def aggregate_audit_result(state: dict[str, Any]) -> AuditResult:
         policy=policy_output,
         grounding_references=grounding,
         validation=validation_output,
+        assessment=assessment,
         errors=errors,
     )
 
@@ -261,12 +274,14 @@ def build_default_audit_graph():
         context_service=get_validation_context_service(),
         llm_client=llm_client,
     )
+    assessment_runner = partial(run_audit_assessment, llm_client=llm_client)
     return build_audit_agent(
         ocr_agent=OCRAgent(),
         policy_runner=policy_runner,
         validation_runner=validation_runner,
         tools=build_audit_tools(),
         aggregator=aggregate_audit_result,
+        assessment_runner=assessment_runner,
     )
 
 

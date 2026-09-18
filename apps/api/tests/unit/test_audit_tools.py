@@ -236,6 +236,8 @@ def test_build_audit_tools_registry():
         "update_audit_run_status",
         "store_extraction",
         "store_agent_response",
+        "get_agent_response",
+        "store_assessment",
         "update_claim_result",
     }
 

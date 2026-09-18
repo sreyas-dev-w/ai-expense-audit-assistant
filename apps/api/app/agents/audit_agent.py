@@ -5,8 +5,14 @@ Flow (LangGraph):
     START → load_claim → begin_run → fetch_receipt → run_ocr
          → store_extraction → map_requests → dispatch
          → [ run_policy | run_validation ]   (parallel branches)
-         → store_responses → aggregate_result → finish → END
+         → store_responses → assess_result → aggregate_result → finish → END
     any fatal node error → mark_failed → END
+
+``assess_result`` is the LLM reasoning node: it summarises the policy/validation
+stage outputs (from state, or the stored ``agent_response`` row if a stage did
+not run) into a final summary/decision/priority/confidence. Its LLM failures
+degrade gracefully to the deterministic ``aggregate_result`` — the audit run
+never fails just because the assessment LLM is unavailable.
 
 Responsibilities (``docs/agents/audit-agent.md``):
 
@@ -17,6 +23,9 @@ Responsibilities (``docs/agents/audit-agent.md``):
   input contracts via ``app/agents/mappers/``
 - run the Policy RAG and Validation agents **in parallel**, persisting their
   envelopes into ``agent_response`` via a tool
+- run the LLM assessment node over the stage outputs and persist its summary +
+  confidence onto ``agent_response`` (never touching ``validation_response`` /
+  ``policy_response``)
 - aggregate the decision-support result and persist it onto the claim
 - treat every failure as a first-class workflow state (``mark_failed``) and
   keep the claim's workflow/run status in sync with events
@@ -25,12 +34,14 @@ The graph is dependency-injected (sub-agents, tools, aggregator) so it can be
 unit-tested without any external service or database; the production wiring
 lives in ``app/services/audit_service.py``.
 """
+import asyncio
 import logging
 from functools import partial
 from typing import Any, Callable
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from pydantic import ValidationError
 
 from app.agents.mappers.category_data_mapper import (
     MapperError,
@@ -42,6 +53,7 @@ from app.agents.state import AuditAgentState
 from app.core.logging import to_loggable
 from app.models.enums import AIRunStatus, ClaimStatus
 from app.schemas.audit import AuditAgentError, AuditResult, ClaimAuditContext
+from app.services.gemini_client import GeminiLLMError
 from app.tools.base import AuditTool, AuditToolError
 
 OK_BRANCH = "ok"
@@ -324,6 +336,63 @@ async def store_responses_node(state: AuditAgentState, *, tools: dict[str, Audit
     return {"agent_response_id": record.id}
 
 
+async def assess_result_node(
+    state: AuditAgentState,
+    *,
+    assessment_runner: Callable | None,
+    tools: dict[str, AuditTool],
+) -> dict:
+    """LLM assessment node: summarise the stage outputs into a recommendation.
+
+    Gathers the OCR extraction + policy/validation results from state when
+    present, otherwise falls back to the stored ``agent_response`` row via the
+    ``get_agent_response`` read tool. LLM failures (timeout, client error,
+    invalid output) degrade gracefully — the run continues to the deterministic
+    ``aggregate_result`` with ``assessment=None``. On success the summary and
+    confidence are persisted onto ``agent_response`` via the
+    ``store_assessment`` tool; ``validation_response`` / ``policy_response``
+    are never touched.
+    """
+    claim_id = state["claim_id"]
+    if assessment_runner is None:
+        logger.info(
+            "Audit agent skipped LLM assessment for claim %s (no runner wired).",
+            claim_id,
+        )
+        return {"assessment": None, "assessment_skipped": True}
+
+    try:
+        sources = await _assessment_sources(state, tools=tools)
+    except AuditToolError as exc:
+        return _tool_failure(exc)
+    logger.info("Audit agent running LLM assessment for claim %s.", claim_id)
+    try:
+        assessment = await assessment_runner(**sources)
+    except asyncio.TimeoutError:
+        return _assessment_unavailable("llm_timeout", "Timed out while generating the audit assessment")
+    except GeminiLLMError as exc:
+        return _assessment_unavailable(exc.code, str(exc))
+    except ValidationError as exc:
+        return _assessment_unavailable(
+            "invalid_llm_output",
+            f"LLM returned invalid audit assessment: {exc.errors()}",
+        )
+
+    tool = _require_tool(tools, "store_assessment")
+    try:
+        await tool.run(claim_id=claim_id, assessment=assessment)
+    except AuditToolError as exc:
+        return _tool_failure(exc)
+    logger.info(
+        "Audit agent stored assessment for claim %s: decision=%s priority=%s confidence=%s",
+        claim_id,
+        assessment.ai_decision.value,
+        assessment.priority.value,
+        assessment.confidence,
+    )
+    return {"assessment": assessment, "assessment_skipped": False}
+
+
 async def aggregate_result_node(
     state: AuditAgentState, *, aggregator: Callable
 ) -> dict:
@@ -431,8 +500,15 @@ def build_audit_agent(
     map_policy_request: Callable = map_to_policy_request,
     map_validation_request: Callable = map_to_validation_request,
     validation_runner: Callable | None = None,
+    assessment_runner: Callable | None = None,
 ) -> CompiledStateGraph:
-    """Compile the Audit Agent orchestration graph with injected dependencies."""
+    """Compile the Audit Agent orchestration graph with injected dependencies.
+
+    ``assessment_runner`` is the LLM assessment callable (e.g.
+    ``functools.partial(run_audit_assessment, llm_client=...)``). When it is
+    ``None`` the assessment node is skipped and the deterministic aggregator
+    produces the result exactly as before.
+    """
     graph = StateGraph(AuditAgentState)
 
     graph.add_node("load_claim", partial(load_claim_node, tools=tools))
@@ -456,6 +532,10 @@ def build_audit_agent(
     )
     graph.add_node("store_responses", partial(store_responses_node, tools=tools))
     graph.add_node(
+        "assess_result",
+        partial(assess_result_node, assessment_runner=assessment_runner, tools=tools),
+    )
+    graph.add_node(
         "aggregate_result",
         partial(aggregate_result_node, aggregator=aggregator),
     )
@@ -476,7 +556,8 @@ def build_audit_agent(
     graph.add_edge("run_policy", "store_responses")
     graph.add_edge("run_validation", "store_responses")
 
-    graph.add_conditional_edges("store_responses", *route_after_error("aggregate_result"))
+    graph.add_conditional_edges("store_responses", *route_after_error("assess_result"))
+    graph.add_conditional_edges("assess_result", *route_after_error("aggregate_result"))
     graph.add_conditional_edges("aggregate_result", *route_after_error("finish"))
     graph.add_conditional_edges("finish", *route_after_error(END))
 
@@ -527,3 +608,68 @@ def _failure_notes(error: AuditAgentError | None) -> str:
     if error is None:
         return "Audit run failed with an unknown error."
     return f"Audit run failed [{error.code}]: {error.message}"
+
+
+def _assessment_unavailable(code: str, message: str) -> dict:
+    """Non-fatal LLM degradation for the assessment node.
+
+    The deterministic ``aggregate_result`` runs unchanged when the assessment
+    is unavailable, so the audit still completes (decision support, not
+    autonomous approval). The failure is recorded as a first-class error.
+    """
+    error = AuditAgentError(agent="audit_agent", code=code, message=message, retryable=True)
+    logger.warning("Audit assessment unavailable: %s", message)
+    return {"assessment": None, "assessment_skipped": False, "errors": [error]}
+
+
+async def _assessment_sources(
+    state: AuditAgentState, *, tools: dict[str, AuditTool]
+) -> dict:
+    """Collect the assessment inputs, preferring state and falling back to DB.
+
+    The policy/validation envelopes come from state when available; missing ones
+    are loaded from the stored ``agent_response`` row via the read
+    ``get_agent_response`` tool (agents never touch SQL directly). If no OCR
+    extraction is in state a derived claim snapshot is used instead.
+    """
+    claim = state.get("claim")
+    extraction = state.get("extraction")
+    policy_result = state.get("policy_result")
+    validation_result = state.get("validation_result")
+
+    if policy_result is None or validation_result is None:
+        record = await _load_stored_response(state, tools=tools)
+        if policy_result is None:
+            policy_result = _stored_payload(record, "policy_response")
+        if validation_result is None:
+            validation_result = _stored_payload(record, "validation_response")
+
+    if claim is not None and extraction is None:
+        extraction = {
+            "source": "claim category_data (no OCR extraction in state)",
+            "category": claim.category.value,
+            "merchant_name": claim.merchant_name,
+            "claim_amount": str(claim.claim_amount),
+            "currency": claim.currency.value,
+            "category_data": claim.category_data,
+        }
+
+    return {
+        "claim": claim,
+        "extraction": extraction,
+        "policy_result": policy_result,
+        "validation_result": validation_result,
+    }
+
+
+async def _load_stored_response(
+    state: AuditAgentState, *, tools: dict[str, AuditTool]
+) -> Any | None:
+    tool = _require_tool(tools, "get_agent_response")
+    return await tool.run(claim_id=state["claim_id"])
+
+
+def _stored_payload(record: Any, attribute: str) -> Any:
+    if record is None:
+        return None
+    return getattr(record, attribute, None)

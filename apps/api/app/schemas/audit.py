@@ -27,6 +27,7 @@ from app.models.enums import (
     ExpenseCategory,
     JobLevel,
 )
+from app.schemas.assessment import AuditAssessment
 from app.schemas.policy import PolicyAgentOutput, PolicyReference
 from app.schemas.validation import ValidationAgentOutput
 
@@ -123,5 +124,9 @@ class AuditResult(BaseModel):
     validation: ValidationAgentOutput | None = Field(
         default=None,
         description="Structured Validation Agent output for auditability.",
+    )
+    assessment: AuditAssessment | None = Field(
+        default=None,
+        description="Structured LLM assessment (summary, decision, priority, confidence).",
     )
     errors: list[AuditAgentError] = Field(default_factory=list)

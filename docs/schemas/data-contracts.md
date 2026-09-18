@@ -74,6 +74,21 @@ Validation domain schemas are defined once in `apps/api/app/schemas/validation.p
   `apps/api/app/agents/mappers/policy_request_mapper.py` builds `PolicyEvaluationRequest` from the claim context
   and canonical category data. Policy RAG does **not** consume validation findings.
 
+## Audit Assessment Contract
+
+The Audit Agent's LLM assessment step is defined once in `apps/api/app/schemas/assessment.py`:
+
+- Agent input: the OCR extraction plus the Policy `PolicyAgentResult` / `ValidationAgentResult` envelopes (from graph
+  state, or the stored `agent_response` row).
+- LLM output (and persisted shape): `AuditAssessment` — `summary`, `ai_decision` (approve/reject/review),
+  `priority` (low/medium/high/urgent), `confidence` (0..1). It is `extra="forbid"` and enum values are coerced
+  case-insensitively before Pydantic validation.
+- Persistence: the Audit Agent's `store_assessment` tool writes **only** `agent_response.notes` (the summary) and
+  `agent_response.confidence_score`; `validation_response` / `policy_response` are never overwritten. The
+  `ai_decision` / `priority` land on the `claims` row via the existing `finish` node.
+- Fallback: when the assessment LLM fails, `AuditAssessment` is absent and the deterministic aggregation
+  (`aggregate_audit_result`) produces decision/priority/notes.
+
 ## Outcome
 
 The system preserves structured stage outputs for auditability:

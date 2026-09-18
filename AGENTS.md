@@ -67,12 +67,14 @@ API → Application/Workflow → Agents → Tools/Services → Infrastructure �
 ```
 
 LangGraph workflow orchestrated by the **Audit Agent**. The Validation Agent and Policy RAG Agent run in parallel;
-final aggregation is deterministic application code (no LLM):
+the Audit Agent then runs an **LLM assessment node** that summarises the OCR/validation/policy stage outputs into the
+final recommendation (summary, decision, priority, confidence); a deterministic aggregation step remains as the
+fallback and envelope builder when that LLM call fails:
 
 ```text
 Audit Agent → OCR & Extraction Agent → Audit Agent
   → [Validation Agent | Policy RAG Agent]  (parallel)
-  → Audit Agent (aggregate + persist) → Manager/Auditor
+  → Audit Agent (LLM assessment → aggregate + persist) → Manager/Auditor
 ```
 
 Per-agent files: `docs/agents/orchestration.md`, `audit-agent.md`, `extraction-agent.md`,

@@ -148,3 +148,29 @@ async def test_update_notes_fills_the_existing_row():
     row = store[("agent_response", 1)]
     assert row.notes == "AI recommendation."
     assert len([k for k in store if k[0] == "agent_response"]) == 1
+
+
+async def test_update_assessment_writes_only_note_and_confidence():
+    store = {
+        ("agent_response", 1): AgentResponse(
+            id=1,
+            claim_id=CLAIM_ID,
+            validation_response={"verdict": "ok"},
+            policy_response={"decision": "FLAG_FOR_REVIEW"},
+        )
+    }
+    session = make_fake_session_factory(store)()
+    repository = AgentResponseRepository(session)
+
+    await repository.update_assessment(
+        claim_id=CLAIM_ID,
+        notes="The claim is compliant.",
+        confidence_score=Decimal("0.95"),
+    )
+
+    row = store[("agent_response", 1)]
+    assert row.notes == "The claim is compliant."
+    assert row.confidence_score == Decimal("0.95")
+    # Existing envelope columns are never touched by the assessment stage.
+    assert row.validation_response == {"verdict": "ok"}
+    assert row.policy_response == {"decision": "FLAG_FOR_REVIEW"}

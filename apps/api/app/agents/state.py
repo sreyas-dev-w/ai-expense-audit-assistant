@@ -10,6 +10,7 @@ errors via a reducer; ``fatal`` marks a terminal failure that routes the run to
 import operator
 from typing import Annotated, Any, TypedDict
 
+from app.schemas.assessment import AuditAssessment
 from app.schemas.audit import (
     AuditAgentError,
     AuditResult,
@@ -32,6 +33,8 @@ class AuditAgentState(TypedDict, total=False):
     validation_result: Any | None  # reserved for the Validation Agent
     validation_skipped: bool
     agent_response_id: int | None
+    assessment: AuditAssessment | None
+    assessment_skipped: bool
     final_result: AuditResult | None
     errors: Annotated[list[AuditAgentError], operator.add]
     fatal: AuditAgentError | None

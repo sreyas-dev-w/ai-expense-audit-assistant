@@ -11,10 +11,15 @@ Extraction Result
 Validation Result
 Policy Result
 Grounding References
+LLM Assessment (summary, decision, priority, confidence)
 Final Audit Result
 ```
 
 Policy-related conclusions should include references to the retrieved policy content wherever applicable.
+
+The LLM assessment summary is a human-readable note written to `agent_response.notes`; the produced
+decision/priority/confidence feed the final result. When the assessment LLM is unavailable, the deterministic
+aggregation produces the note instead — the run still completes with decision support.
 
 ## Decision Support
 
