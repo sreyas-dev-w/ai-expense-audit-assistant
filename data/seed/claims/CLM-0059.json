@@ -1,0 +1,34 @@
+{
+  "claim_id": "CLM-0059",
+  "employee_id": "EMP-050",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Business flight",
+  "project_code": "OPS-INFRA",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0059-01",
+      "item_name": "Flight Ticket",
+      "quantity": 1,
+      "unit_price": "45000.00",
+      "total_amount": "45000.00",
+      "item_category": "Flight",
+      "approved": "Yes",
+      "expense_date": "2026-09-07",
+      "expense_category": "TRAVEL",
+      "merchant_name": "Air India",
+      "description": "Business flight",
+      "receipt_file": "invoices/INV-0059.jpg"
+    },
+    {
+      "line_id": "LINE-0059-02",
+      "item_name": "Business Class Upgrade",
+      "quantity": 1,
+      "unit_price": "5000.00",
+      "total_amount": "5000.00",
+      "item_category": "Flight",
+      "approved": "No"
+    }
+  ]
+}

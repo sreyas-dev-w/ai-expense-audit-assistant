@@ -1,0 +1,43 @@
+{
+  "claim_id": "CLM-0104",
+  "employee_id": "EMP-048",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Office supplies",
+  "project_code": "DIGITAL-ML",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0104-01",
+      "item_name": "Mouse",
+      "quantity": 1,
+      "unit_price": "800.00",
+      "total_amount": "800.00",
+      "item_category": "Supply Item",
+      "approved": "Yes",
+      "expense_date": "2026-09-03",
+      "expense_category": "SUPPLIES",
+      "merchant_name": "Staples",
+      "description": "Office supplies",
+      "receipt_file": "invoices/INV-0104.jpg"
+    },
+    {
+      "line_id": "LINE-0104-02",
+      "item_name": "USB Drive",
+      "quantity": 1,
+      "unit_price": "500.00",
+      "total_amount": "500.00",
+      "item_category": "Supply Item",
+      "approved": "Yes"
+    },
+    {
+      "line_id": "LINE-0104-03",
+      "item_name": "Monitor",
+      "quantity": 1,
+      "unit_price": "4000.00",
+      "total_amount": "4000.00",
+      "item_category": "Supply Item",
+      "approved": "Yes"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0176",
+  "employee_id": "EMP-008",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "equipment_rental expense",
+  "project_code": "PROJECT-XYZ",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0176",
+      "expense_date": null,
+      "expense_category": "EQUIPMENT_RENTAL",
+      "merchant_name": "Indigo Airlines",
+      "claimed_amount": "3000.00",
+      "description": "equipment_rental expense",
+      "receipt_file": "invoices/INV-0176.pdf"
+    }
+  ]
+}

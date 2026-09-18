@@ -1,0 +1,43 @@
+{
+  "claim_id": "CLM-0030",
+  "employee_id": "EMP-023",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Business meal",
+  "project_code": "CAPSTONE-002",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0030-01",
+      "item_name": "Salad",
+      "quantity": 1,
+      "unit_price": "250.00",
+      "total_amount": "250.00",
+      "item_category": "Meal Item",
+      "approved": "Yes",
+      "expense_date": "2026-08-27",
+      "expense_category": "MEALS",
+      "merchant_name": "Marriott",
+      "description": "Business meal",
+      "receipt_file": "invoices/INV-0030.jpg"
+    },
+    {
+      "line_id": "LINE-0030-02",
+      "item_name": "Naan Bread",
+      "quantity": 1,
+      "unit_price": "100.00",
+      "total_amount": "100.00",
+      "item_category": "Meal Item",
+      "approved": "Yes"
+    },
+    {
+      "line_id": "LINE-0030-03",
+      "item_name": "Cocktail",
+      "quantity": 1,
+      "unit_price": "600.00",
+      "total_amount": "600.00",
+      "item_category": "Meal Item",
+      "approved": "No"
+    }
+  ]
+}

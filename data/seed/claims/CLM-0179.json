@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0179",
+  "employee_id": "EMP-019",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "supplies expense",
+  "project_code": "PROJECT-ABC",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0179",
+      "expense_date": "2026-09-10",
+      "expense_category": "SUPPLIES",
+      "merchant_name": "ITC Hotels",
+      "claimed_amount": null,
+      "description": "supplies expense",
+      "receipt_file": "invoices/INV-0179.pdf"
+    }
+  ]
+}

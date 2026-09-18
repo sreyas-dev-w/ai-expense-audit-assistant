@@ -1,0 +1,25 @@
+{
+  "claim_id": "CLM-0027",
+  "employee_id": "EMP-017",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Business meal",
+  "project_code": "OPS-INFRA",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0027-01",
+      "item_name": "Champagne",
+      "quantity": 1,
+      "unit_price": "2000.00",
+      "total_amount": "2000.00",
+      "item_category": "Meal Item",
+      "approved": "No",
+      "expense_date": "2026-08-21",
+      "expense_category": "MEALS",
+      "merchant_name": "Taj Hotel",
+      "description": "Business meal",
+      "receipt_file": "invoices/INV-0027.jpg"
+    }
+  ]
+}

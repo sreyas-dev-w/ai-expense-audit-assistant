@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0137",
+  "employee_id": "EMP-022",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "supplies expense",
+  "project_code": "PROJECT-ABC",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0137",
+      "expense_date": "2026-06-08",
+      "expense_category": "SUPPLIES",
+      "merchant_name": "Uber",
+      "claimed_amount": "1500.00",
+      "description": "supplies expense",
+      "receipt_file": "invoices/INV-0137.pdf"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0180",
+  "employee_id": "EMP-013",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "communications expense",
+  "project_code": "PROJECT-ABC",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0180",
+      "expense_date": "2026-08-28",
+      "expense_category": "COMMUNICATIONS",
+      "merchant_name": "Starbucks",
+      "claimed_amount": null,
+      "description": "communications expense",
+      "receipt_file": "invoices/INV-0180.pdf"
+    }
+  ]
+}

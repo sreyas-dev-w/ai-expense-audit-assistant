@@ -1,0 +1,25 @@
+{
+  "claim_id": "CLM-0074",
+  "employee_id": "EMP-018",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Business hotel",
+  "project_code": "DIGITAL-AI",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0074-01",
+      "item_name": "Room Charge",
+      "quantity": 1,
+      "unit_price": "5500.00",
+      "total_amount": "5500.00",
+      "item_category": "Hotel",
+      "approved": "Yes",
+      "expense_date": "2026-09-04",
+      "expense_category": "ACCOMMODATION",
+      "merchant_name": "Marriott",
+      "description": "Business hotel",
+      "receipt_file": "invoices/INV-0074.jpg"
+    }
+  ]
+}

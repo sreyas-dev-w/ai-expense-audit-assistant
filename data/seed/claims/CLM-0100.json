@@ -1,0 +1,34 @@
+{
+  "claim_id": "CLM-0100",
+  "employee_id": "EMP-016",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Office supplies",
+  "project_code": "PROJ-GLOBAL-001",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0100-01",
+      "item_name": "Monitor",
+      "quantity": 1,
+      "unit_price": "4000.00",
+      "total_amount": "4000.00",
+      "item_category": "Supply Item",
+      "approved": "Yes",
+      "expense_date": "2026-08-29",
+      "expense_category": "SUPPLIES",
+      "merchant_name": "Staples",
+      "description": "Office supplies",
+      "receipt_file": "invoices/INV-0100.jpg"
+    },
+    {
+      "line_id": "LINE-0100-02",
+      "item_name": "Pens",
+      "quantity": 1,
+      "unit_price": "150.00",
+      "total_amount": "150.00",
+      "item_category": "Supply Item",
+      "approved": "Yes"
+    }
+  ]
+}

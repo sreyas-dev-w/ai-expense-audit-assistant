@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0167",
+  "employee_id": "EMP-008",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "Boundary test meal",
+  "project_code": "CAPSTONE-001",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0167",
+      "expense_date": "2026-08-20",
+      "expense_category": "MEALS",
+      "merchant_name": "Leela",
+      "claimed_amount": "1500.00",
+      "description": "Boundary test meal",
+      "receipt_file": "invoices/INV-0167.pdf"
+    }
+  ]
+}

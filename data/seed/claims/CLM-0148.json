@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0148",
+  "employee_id": "EMP-046",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "equipment_rental expense",
+  "project_code": "CAPSTONE-002",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0148",
+      "expense_date": "2026-08-17",
+      "expense_category": "EQUIPMENT_RENTAL",
+      "merchant_name": "Hilton",
+      "claimed_amount": "3000.00",
+      "description": "equipment_rental expense",
+      "receipt_file": "invoices/INV-0148.pdf"
+    }
+  ]
+}

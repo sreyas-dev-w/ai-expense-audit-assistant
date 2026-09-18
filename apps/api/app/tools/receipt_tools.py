@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 
 from app.schemas.audit import ReceiptData
+from app.services.file_service import app_root_dir
 from app.tools.base import AuditTool, AuditToolError
 
 _ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
@@ -84,6 +85,8 @@ class FetchReceiptTool(AuditTool):
     @staticmethod
     def _read_local(path: str) -> tuple[bytes, str | None]:
         local = Path(path)
+        if not local.is_absolute():
+            local = app_root_dir() / local
         if not local.is_file():
             raise FileNotFoundError(f"Receipt not found at {path}")
         return local.read_bytes(), mimetypes.guess_type(local.name)[0]

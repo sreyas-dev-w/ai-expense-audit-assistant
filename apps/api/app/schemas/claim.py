@@ -10,7 +10,13 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import ClaimPriority, ClaimStatus, Currency, ExpenseCategory
+from app.models.enums import (
+    AIRunStatus,
+    ClaimPriority,
+    ClaimStatus,
+    Currency,
+    ExpenseCategory,
+)
 from app.schemas.expense import (
     AccommodationData,
     FoodMealsData,
@@ -60,6 +66,20 @@ ClaimCreate = Annotated[
     ],
     Field(discriminator="category"),
 ]
+
+
+class ClaimSubmissionResponse(BaseModel):
+    """The 201 resource-created payload returned once a claim is persisted.
+
+    ``status`` is ``SUBMITTED`` and ``ai_run_status`` is ``PENDING``: the Audit
+    Agent is handed off in the background and transitions the claim as it runs.
+    """
+
+    message: str = "Claim submitted successfully"
+    claim_id: int
+    status: ClaimStatus
+    ai_run_status: AIRunStatus = AIRunStatus.PENDING
+    receipt_url: str | None = None
 
 
 class ClaimReadBase(BaseModel):

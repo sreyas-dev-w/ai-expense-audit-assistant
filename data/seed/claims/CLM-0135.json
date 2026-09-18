@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0135",
+  "employee_id": "EMP-010",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "accommodation expense",
+  "project_code": "PROJECT-XYZ",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0135",
+      "expense_date": "2026-07-28",
+      "expense_category": "ACCOMMODATION",
+      "merchant_name": "Taj Hotels",
+      "claimed_amount": "4500.00",
+      "description": "accommodation expense",
+      "receipt_file": "invoices/INV-0135.pdf"
+    }
+  ]
+}

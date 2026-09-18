@@ -1,0 +1,43 @@
+{
+  "claim_id": "CLM-0026",
+  "employee_id": "EMP-008",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-12",
+  "purpose": "Business meal",
+  "project_code": "OPS-SUPPORT",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0026-01",
+      "item_name": "Grilled Chicken",
+      "quantity": 1,
+      "unit_price": "650.00",
+      "total_amount": "650.00",
+      "item_category": "Meal Item",
+      "approved": "Yes",
+      "expense_date": "2026-08-22",
+      "expense_category": "MEALS",
+      "merchant_name": "Marriott",
+      "description": "Business meal",
+      "receipt_file": "invoices/INV-0026.jpg"
+    },
+    {
+      "line_id": "LINE-0026-02",
+      "item_name": "Paneer Tikka",
+      "quantity": 1,
+      "unit_price": "550.00",
+      "total_amount": "550.00",
+      "item_category": "Meal Item",
+      "approved": "Yes"
+    },
+    {
+      "line_id": "LINE-0026-03",
+      "item_name": "Vodka",
+      "quantity": 1,
+      "unit_price": "1000.00",
+      "total_amount": "1000.00",
+      "item_category": "Meal Item",
+      "approved": "No"
+    }
+  ]
+}

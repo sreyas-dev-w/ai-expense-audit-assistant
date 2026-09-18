@@ -1,0 +1,20 @@
+{
+  "claim_id": "CLM-0144",
+  "employee_id": "EMP-017",
+  "policy_version": "EXPENSE-POLICY-V1",
+  "submission_date": "2026-09-11",
+  "purpose": "meals expense",
+  "project_code": "CAPSTONE-001",
+  "currency": "INR",
+  "expense_lines": [
+    {
+      "line_id": "LINE-0144",
+      "expense_date": "2026-08-17",
+      "expense_category": "MEALS",
+      "merchant_name": "Ola Cabs",
+      "claimed_amount": "1200.00",
+      "description": "meals expense",
+      "receipt_file": "invoices/INV-0144.pdf"
+    }
+  ]
+}
