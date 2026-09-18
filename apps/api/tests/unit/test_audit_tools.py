@@ -81,18 +81,27 @@ async def test_update_claim_result_persists_decision_priority_and_notes():
     store = _store()
     factory = make_fake_session_factory(store)
 
-    await UpdateClaimResultTool(session_factory=factory).run(
+    result = await UpdateClaimResultTool(session_factory=factory).run(
         claim_id=CLAIM_ID,
         ai_decision=AIDecision.REVIEW,
         priority=ClaimPriority.HIGH,
-        notes="Needs manual review.",
+        notes="AI summary note",
     )
 
     claim = store[("claims", CLAIM_ID)]
     assert claim.ai_decision == AIDecision.REVIEW
     assert claim.priority == ClaimPriority.HIGH
     assert claim.ai_run_status == AIRunStatus.COMPLETED
-    assert claim.auditer_notes == "Needs manual review."
+    # auditer_notes stays None: it is the manager's manual field, not the AI's.
+    assert claim.auditer_notes is None
+    assert result.updated_fields == [
+        "ai_decision",
+        "priority",
+        "ai_run_status",
+        "agent_response_notes",
+    ]
+    response = store[("agent_response", 1)]
+    assert response.notes == "AI summary note"
 
 
 async def test_store_extraction_persists_category_data():
@@ -109,7 +118,7 @@ async def test_store_extraction_persists_category_data():
     assert store[("claims", CLAIM_ID)].category_data["merchant_name"] == "Updated Bistro"
 
 
-async def test_store_agent_response_creates_row():
+async def test_store_agent_response_creates_row_when_missing():
     store = _store()
     next_ids = {}
     factory = make_fake_session_factory(store, next_ids)
@@ -124,6 +133,39 @@ async def test_store_agent_response_creates_row():
     row = store[("agent_response", 1)]
     assert row.policy_response["output"]["decision"] == "FLAG_FOR_REVIEW"
     assert row.confidence_score == Decimal("0.85")
+
+    # Re-running the tool updates the same row instead of inserting another.
+    record2 = await StoreAgentResponseTool(session_factory=factory).run(
+        claim_id=CLAIM_ID, policy_result=policy_result
+    )
+    assert record2.id == 1
+    agent_response_rows = [k for k in store if k[0] == "agent_response"]
+    assert len(agent_response_rows) == 1
+
+
+async def test_store_agent_response_updates_existing_row():
+    from app.models.agent_response import AgentResponse
+
+    store = _store()
+    store[("agent_response", 5)] = AgentResponse(id=5, claim_id=CLAIM_ID)
+    factory = make_fake_session_factory(store)
+    policy_result = make_policy_result()
+    validation_result = {"validated": True}
+
+    record = await StoreAgentResponseTool(session_factory=factory).run(
+        claim_id=CLAIM_ID,
+        policy_result=policy_result,
+        validation_result=validation_result,
+    )
+
+    assert record.id == 5
+    assert record.claim_id == CLAIM_ID
+    row = store[("agent_response", 5)]
+    assert row.policy_response["output"]["decision"] == "FLAG_FOR_REVIEW"
+    assert row.validation_response == {"validated": True}
+    assert row.confidence_score == Decimal("0.85")
+    agent_response_rows = [k for k in store if k[0] == "agent_response"]
+    assert len(agent_response_rows) == 1
 
 
 @pytest.mark.parametrize(

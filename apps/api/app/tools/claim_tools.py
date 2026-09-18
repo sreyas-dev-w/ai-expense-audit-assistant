@@ -2,9 +2,12 @@
 
 Each tool owns a short, deliberate transaction (``transaction_session``) and
 returns a typed structured result (``docs/agents/agent-tools.md``).
+``claim.auditer_notes`` is a manual field filled by the auditing manager; AI
+notes are written to ``agent_response.notes`` instead.
 """
 from app.db.session import async_session_factory
 from app.models.enums import AIDecision, AIRunStatus, ClaimPriority, ClaimStatus
+from app.repositories.agent_response_repository import AgentResponseRepository
 from app.repositories.claim_repository import ClaimRepository
 from app.schemas.audit import ClaimAuditContext, ClaimWriteResult
 from app.tools.base import AuditTool, AuditToolError, transaction_session
@@ -80,11 +83,15 @@ class UpdateAuditRunStatusTool(AuditTool):
                     claim_id,
                     claim_status=claim_status,
                     ai_run_status=ai_run_status,
-                    notes=notes,
                 )
                 if claim is None:
                     raise AuditToolError(
                         f"Claim {claim_id} not found", code="claim_not_found"
+                    )
+                if notes is not None:
+                    agent_responses = AgentResponseRepository(session)
+                    await agent_responses.update_notes(
+                        claim_id=claim_id, notes=notes
                     )
         except AuditToolError:
             raise
@@ -93,13 +100,20 @@ class UpdateAuditRunStatusTool(AuditTool):
                 f"Failed to update run status for claim {claim_id}: {exc}",
                 code="update_status_failed",
             ) from exc
+        updated_fields = ["status", "ai_run_status"]
+        if notes is not None:
+            updated_fields.append("agent_response_notes")
         return ClaimWriteResult(
-            claim_id=claim_id, updated_fields=["status", "ai_run_status"]
+            claim_id=claim_id, updated_fields=updated_fields
         )
 
 
 class UpdateClaimResultTool(AuditTool):
-    """Persist the final AI decision, priority and notes onto the claim."""
+    """Persist the final AI decision, priority and the AI note.
+
+    The AI note is written to ``agent_response.notes`` (what the auditor sees);
+    ``claim.auditer_notes`` remains the manager's manual field.
+    """
 
     name = "update_claim_result"
     description = "Persist the AI recommendation, priority and notes onto the claim."
@@ -124,11 +138,15 @@ class UpdateClaimResultTool(AuditTool):
                     ai_decision=ai_decision,
                     priority=priority,
                     ai_run_status=ai_run_status,
-                    notes=notes,
                 )
                 if claim is None:
                     raise AuditToolError(
                         f"Claim {claim_id} not found", code="claim_not_found"
+                    )
+                if notes is not None:
+                    agent_responses = AgentResponseRepository(session)
+                    await agent_responses.update_notes(
+                        claim_id=claim_id, notes=notes
                     )
         except AuditToolError:
             raise
@@ -137,12 +155,10 @@ class UpdateClaimResultTool(AuditTool):
                 f"Failed to persist audit result for claim {claim_id}: {exc}",
                 code="update_result_failed",
             ) from exc
+        updated_fields = ["ai_decision", "priority", "ai_run_status"]
+        if notes is not None:
+            updated_fields.append("agent_response_notes")
         return ClaimWriteResult(
             claim_id=claim_id,
-            updated_fields=[
-                "ai_decision",
-                "priority",
-                "ai_run_status",
-                "auditer_notes",
-            ],
+            updated_fields=updated_fields,
         )

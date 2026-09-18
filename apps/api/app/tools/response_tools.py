@@ -2,14 +2,15 @@
 
 - ``StoreExtractionTool`` persists the OCR-extracted category data onto the
   claim's ``category_data`` (``claims`` table).
-- ``StoreAgentResponseTool`` persists the policy/validation agent envelopes
-  into an ``agent_response`` row (``agent_response`` table).
+- ``StoreAgentResponseTool`` writes the policy/validation agent envelopes into
+  the claim's ``agent_response`` row (created eagerly at claim submission),
+  updating it in place rather than inserting a new row.
 """
 from decimal import Decimal
 from typing import Any
 
 from app.db.session import async_session_factory
-from app.repositories.audit_repository import AuditRepository
+from app.repositories.agent_response_repository import AgentResponseRepository
 from app.repositories.claim_repository import ClaimRepository
 from app.schemas.audit import AgentResponseRecord, ClaimWriteResult
 from app.tools.base import AuditTool, AuditToolError, transaction_session
@@ -56,7 +57,7 @@ class StoreExtractionTool(AuditTool):
 
 
 class StoreAgentResponseTool(AuditTool):
-    """Persist the policy/validation agent envelopes into ``agent_response``."""
+    """Write the policy/validation agent envelopes into ``agent_response``."""
 
     name = "store_agent_response"
     description = "Persist the policy (and future validation) agent output for a claim."
@@ -74,13 +75,13 @@ class StoreAgentResponseTool(AuditTool):
     ) -> AgentResponseRecord:
         try:
             async with transaction_session(self._session_factory) as session:
-                repository = AuditRepository(session)
-                record = await repository.create_agent_response(
+                repository = AgentResponseRepository(session)
+                record = await repository.update_responses(
                     claim_id=claim_id,
                     policy_response=_json_payload(policy_result),
                     validation_response=_json_payload(validation_result),
-                    notes=notes,
                     confidence_score=_confidence(policy_result),
+                    notes=notes,
                 )
                 await session.flush()
                 record_id = record.id
