@@ -21,6 +21,25 @@ class GeminiLLMError(Exception):
         self.code = code
 
 
+def _schema_without_additional_properties(schema: Any) -> Any:
+    """Deep-copy a JSON schema with the ``additionalProperties`` keyword removed.
+
+    Pydantic v2 emits ``additionalProperties: false`` for ``extra="forbid"``
+    models, which the Gemini Developer API rejects. Only the wire schema is
+    relaxed; callers still re-validate the untrusted model output with the
+    strict Pydantic schema (``docs/backend/llm-integration.md``).
+    """
+    if isinstance(schema, dict):
+        return {
+            key: _schema_without_additional_properties(value)
+            for key, value in schema.items()
+            if key not in ("additionalProperties", "additional_properties")
+        }
+    if isinstance(schema, list):
+        return [_schema_without_additional_properties(item) for item in schema]
+    return schema
+
+
 class GeminiClient:
     def __init__(
         self,
@@ -51,6 +70,9 @@ class GeminiClient:
         validation problems surface immediately.
         """
         last_error: Exception | None = None
+        wire_response_schema = _schema_without_additional_properties(
+            response_schema.model_json_schema()
+        )
         for attempt in range(1, self.max_retries + 1):
             try:
                 response = self._client.models.generate_content(
@@ -59,7 +81,7 @@ class GeminiClient:
                     config=types.GenerateContentConfig(
                         system_instruction=system_instruction,
                         response_mime_type="application/json",
-                        response_schema=response_schema,
+                        response_schema=wire_response_schema,
                     ),
                 )
                 return self._extract(response, response_schema)
@@ -84,6 +106,8 @@ class GeminiClient:
     ) -> dict[str, Any]:
         parsed = getattr(response, "parsed", None)
         if parsed is not None:
+            if isinstance(parsed, dict):
+                return parsed
             return parsed.model_dump()
         text = getattr(response, "text", None)
         if text:
