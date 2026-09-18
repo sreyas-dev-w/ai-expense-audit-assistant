@@ -43,7 +43,7 @@ class EmployeeRepository:
         self,
         username: str,
     ) -> Employee | None:
-        result = await self._session.execute(
+        result = await self.session.execute(
             select(Employee).where(
                 Employee.username == username
             )
