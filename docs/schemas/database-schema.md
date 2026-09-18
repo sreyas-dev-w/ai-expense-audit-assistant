@@ -31,6 +31,8 @@ erDiagram
         Bool is_manager
         String manager_id FK
         String project_code FK
+        String username
+        String password
     }
 
     claims {
@@ -41,12 +43,15 @@ erDiagram
         JsonB category_data
         String employee_id FK
         String auditer_id FK
-        String auditer_notes
+        Text auditer_notes
         String project_code
-        String claim_amount
+        Float claim_amount
+        Float tax_amount
         Enum currency
         Enum status
         Enum priority
+        Enum ai_run_status
+        Enum ai_decision
         String receipt_url
         DateTime claim_created_at
         DateTime claim_updated_at
@@ -103,9 +108,9 @@ The domain types above map to PostgreSQL types as follows:
 |---|---|---|
 | `String PK` / `String` | `VARCHAR` | Natural business keys (`account_id`, `project_code`, `employee_id`) are used directly as primary keys. |
 | `Year` | `INTEGER` (e.g. `2026`) | A year is an integer. |
-| `Float` (money) | `NUMERIC(14,2)` | Monetary values must be exact; floats introduce rounding errors. `budget_allocated`, `remaining_budget`, `claim_amount`. |
+| `Float` (money) | `NUMERIC(14,2)` | Monetary values must be exact; floats introduce rounding errors. `budget_allocated`, `remaining_budget`, `claim_amount`, `tax_amount`. |
 | `String confidence_score` | `NUMERIC(5,2)` | Numeric score for the agent's confidence (e.g. `92.00`). |
-| `Enum` | Native PostgreSQL `ENUM` | Enums are stored as real PG enum types (`native_enum=True`) so the database enforces the allowed values. Enum labels are the Python member names (e.g. `MEALS`, `DRAFT`). |
+| `Enum` | Native PostgreSQL `ENUM` | Enums are stored as real PG enum types (`native_enum=True`) so the database enforces the allowed values. Enum labels are the Python member names (e.g. `FOOD_MEALS`, `DRAFT`). |
 | `JsonB` | `JSONB` | `category_data`, `agent_response.validation_response` / `policy_response`, `policy_chunking.metadata`. |
 | `Vector[1536]` | `vector(1536)` (pgvector) | `policy_chunking.embeddings`, from the Gemini Embedding 2 model (`gemini-embedding-2`, `output_dimensionality=1536`). |
 | `Bool` | `BOOLEAN` | `is_manager`. |
@@ -159,6 +164,8 @@ The domain types above map to PostgreSQL types as follows:
 | `is_manager` | BOOLEAN | NOT NULL, default `false` |
 | `manager_id` | VARCHAR(64) | NULL, self-FK → `employees.employee_id` (SET NULL), indexed |
 | `project_code` | VARCHAR(64) | NULL, FK → `projects.project_code` (SET NULL), indexed |
+| `username` | VARCHAR(64) | NULL, **unique**, indexed — added via migration `3e645d1ba080`; seeded as `lower(employee_id)` |
+| `password` | VARCHAR(255) | NULL — seeded with dummy value `password@123` (plain text, no hashing/auth logic yet) |
 
 ### `claims`
 
@@ -174,9 +181,12 @@ The domain types above map to PostgreSQL types as follows:
 | `auditer_notes` | TEXT | NULL, **manual field** filled by the auditing manager (human in the loop); the AI never writes here — its notes live in `agent_response.notes` |
 | `project_code` | VARCHAR(64) | NULL, indexed (no FK) |
 | `claim_amount` | NUMERIC(14,2) | NOT NULL, default `0` |
+| `tax_amount` | NUMERIC(14,2) | NOT NULL, default `0` — added via migration `10c4aa1d273e` |
 | `currency` | ENUM | NOT NULL, default `INR` |
-| `status` | ENUM | NOT NULL, default `draft`, indexed |
-| `priority` | ENUM | NOT NULL, default `medium` |
+| `status` | ENUM | NOT NULL, default `DRAFT`, indexed |
+| `priority` | ENUM | NOT NULL, default `MEDIUM` |
+| `ai_run_status` | ENUM | NOT NULL, default `PENDING` — added via migration `eb26ffaee5ae` |
+| `ai_decision` | ENUM | NULL — added via migration `eb26ffaee5ae` |
 | `receipt_url` | VARCHAR(1024) | NULL |
 | `claim_created_at` | TIMESTAMPTZ | NULL, indexed |
 | `claim_updated_at` | TIMESTAMPTZ | NULL |
@@ -242,6 +252,8 @@ Enums are stored as native PostgreSQL `ENUM` types. Labels are the Python member
 - **expense_category** (claims.category): `FOOD_MEALS`, `TRAVEL`, `ACCOMMODATION`, `OTHER`
 - **claim_status** (claims.status): `DRAFT`, `SUBMITTED`, `IN_AUDIT`, `APPROVED`, `REJECTED`, `NEEDS_REVISION`
 - **claim_priority** (claims.priority): `LOW`, `MEDIUM`, `HIGH`, `URGENT`
+- **ai_run_status** (claims.ai_run_status): `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`
+- **ai_decision** (claims.ai_decision): `APPROVE`, `REJECT`, `REVIEW` — nullable; set after the AI run completes
 
 ## Expense Category Data
 

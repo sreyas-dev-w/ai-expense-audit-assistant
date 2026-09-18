@@ -39,7 +39,7 @@ Employee Expense Claim
              ▼          ▼
 ┌─────────────────┐  ┌───────────────────────┐
 │  Validation     │  │    Policy RAG Agent   │
-│  Agent (future) │  │                       │
+│  Agent          │  │                       │
 └────────┬────────┘  │ Retrieve relevant      │
          │           │ company policies from  │
          │           │ PostgreSQL + pgvector  │
@@ -68,8 +68,9 @@ See `docs/architecture/high-level-backend-architecture.md` for the system-level 
 The graph is **sequential** end-to-end, with **one deliberate parallel fan-out**: after the OCR extraction is mapped to
 the downstream agent contracts, the **Policy RAG Agent** and the **Validation Agent** run in the *same LangGraph
 superstep* (`dispatch → [run_policy | run_validation]`). The two analyses are independent of each other — both read only
-the stored extraction — so running them concurrently cuts audit latency in half and matches the requirement that policy
-and validation be evaluated in parallel. The Document Translation / Accommodation flows remain sequential.
+the stored extraction — so running them concurrently cuts audit latency in half. This is the only concurrency in the
+workflow: there is no separate accommodation/document-translation sub-flow, and everything else is a single forward
+pass.
 
 The Validation Agent runs in the same superstep as the Policy RAG Agent via an injected `validation_runner`
 (`app/agents/audit_agent.py`, wired in `app/services/audit_service.py`); when no runner is injected the `run_validation`
