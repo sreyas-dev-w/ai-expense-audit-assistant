@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # LLM
     gemini_api_key: str = ""
-    gemini_llm_model: str = "gemini-3.6-flash"
+    gemini_llm_model: str = "gemini-3.5-flash-lite"
     gemini_llm_timeout_seconds: int = 60
     gemini_max_retries: int = 2
 
