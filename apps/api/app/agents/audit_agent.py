@@ -25,6 +25,7 @@ The graph is dependency-injected (sub-agents, tools, aggregator) so it can be
 unit-tested without any external service or database; the production wiring
 lives in ``app/services/audit_service.py``.
 """
+import logging
 from functools import partial
 from typing import Any, Callable
 
@@ -36,13 +37,17 @@ from app.agents.mappers.category_data_mapper import (
     map_extraction_to_category_data,
 )
 from app.agents.mappers.policy_request_mapper import map_to_policy_request
+from app.agents.mappers.validation_request_mapper import map_to_validation_request
 from app.agents.state import AuditAgentState
+from app.core.logging import to_loggable
 from app.models.enums import AIRunStatus, ClaimStatus
 from app.schemas.audit import AuditAgentError, AuditResult, ClaimAuditContext
 from app.tools.base import AuditTool, AuditToolError
 
 OK_BRANCH = "ok"
 FAIL_BRANCH = "mark_failed"
+
+logger = logging.getLogger(__name__)
 
 
 def _fatal(agent: str, code: str, message: str, *, retryable: bool = False) -> dict:
@@ -82,6 +87,12 @@ async def load_claim_node(state: AuditAgentState, *, tools: dict[str, AuditTool]
             "claim_not_found",
             f"Claim {state['claim_id']} was not found",
         )
+    logger.info(
+        "Audit agent loaded claim %s: category=%s employee=%s",
+        claim.claim_id,
+        claim.category.value,
+        claim.employee_id,
+    )
     return {"claim": claim}
 
 
@@ -96,6 +107,7 @@ async def begin_run_node(state: AuditAgentState, *, tools: dict[str, AuditTool])
         )
     except AuditToolError as exc:
         return _tool_failure(exc)
+    logger.info("Audit agent started run for claim %s.", state["claim_id"])
     return {}
 
 
@@ -116,6 +128,12 @@ async def fetch_receipt_node(state: AuditAgentState, *, tools: dict[str, AuditTo
         return _fatal(
             "audit_agent", "empty_receipt", "Receipt was fetched but contained no content"
         )
+    logger.info(
+        "Audit agent fetched receipt for claim %s: mime_type=%s bytes=%d",
+        state["claim_id"],
+        receipt.mime_type,
+        len(receipt.content),
+    )
     return {"receipt": receipt}
 
 
@@ -125,6 +143,11 @@ async def run_ocr_node(
     """Call the OCR & Extraction Agent with the receipt + category."""
     claim: ClaimAuditContext = state["claim"]
     receipt = state["receipt"]
+    logger.info(
+        "Audit agent calling OCR agent for claim %s (category=%s).",
+        claim.claim_id,
+        claim.category.value,
+    )
     try:
         extraction = await ocr_agent.process(
             expense_category=_ocr_expense_label(claim.category),
@@ -132,6 +155,7 @@ async def run_ocr_node(
             mime_type=receipt.mime_type,
         )
     except Exception as exc:
+        logger.exception("OCR agent failed for claim %s.", claim.claim_id)
         return _fatal(
             "ocr_extraction_agent",
             "ocr_failed",
@@ -164,17 +188,21 @@ async def store_extraction_node(state: AuditAgentState, *, tools: dict[str, Audi
         await tool.run(claim_id=claim.claim_id, category_data=category_data)
     except AuditToolError as exc:
         return _tool_failure(exc)
+    logger.info(
+        "Audit agent stored category data for claim %s: %s",
+        claim.claim_id,
+        to_loggable(category_data),
+    )
     return {"category_data": category_data}
 
 
 async def map_requests_node(
-    state: AuditAgentState, *, map_policy_request: Callable
+    state: AuditAgentState,
+    *,
+    map_policy_request: Callable,
+    map_validation_request: Callable,
 ) -> dict:
-    """Map the stored extraction into the downstream agent request contracts.
-
-    The Validation Agent input is intentionally not mapped yet
-    (``validation_request_mapper`` is reserved); when it lands, wire it here.
-    """
+    """Map the stored extraction into the downstream agent request contracts."""
     try:
         policy_request = map_policy_request(
             state["extraction"],
@@ -183,7 +211,22 @@ async def map_requests_node(
         )
     except MapperError as exc:
         return _fatal("audit_mappers", exc.code, str(exc))
-    return {"policy_request": policy_request}
+    try:
+        validation_request = map_validation_request(
+            state["extraction"],
+            context=state["claim"],
+            category_data=state.get("category_data"),
+        )
+    except MapperError as exc:
+        return _fatal("audit_mappers", exc.code, str(exc))
+    logger.info(
+        "Audit agent mapped policy and validation requests for claim %s.",
+        state["claim_id"],
+    )
+    return {
+        "policy_request": policy_request,
+        "validation_request": validation_request,
+    }
 
 
 async def dispatch_node(state: AuditAgentState) -> dict:
@@ -192,9 +235,11 @@ async def dispatch_node(state: AuditAgentState) -> dict:
 
 
 async def run_policy_node(state: AuditAgentState, *, policy_runner: Callable) -> dict:
+    logger.info("Audit agent dispatching Policy agent for claim %s.", state["claim_id"])
     try:
         result = await policy_runner(state["policy_request"])
     except Exception as exc:
+        logger.exception("Policy agent raised for claim %s.", state["claim_id"])
         return _fatal(
             "policy_rag_agent",
             "policy_agent_crashed",
@@ -208,43 +253,71 @@ async def run_policy_node(state: AuditAgentState, *, policy_runner: Callable) ->
             "Policy agent returned no result",
             retryable=True,
         )
+    logger.info(
+        "Audit agent received Policy result for claim %s: status=%s",
+        state["claim_id"],
+        getattr(result, "status", None),
+    )
     return {"policy_result": result}
 
 
 async def run_validation_node(
     state: AuditAgentState, *, validation_runner: Callable | None = None
 ) -> dict:
-    """Reserved parallel branch for the Validation Agent.
+    """Run the Validation Agent in the parallel dispatch superstep.
 
-    The Validation Agent is not implemented yet, so by default this node is a
-    no-op that records ``validation_skipped``. To activate it, pass a
-    ``validation_runner`` when building the graph:
-
-        result = await validation_runner(state["validation_request"])
-        return {"validation_result": result, "validation_skipped": False}
+    Consumes the ``validation_request`` mapped in ``map_requests_node``.
+    When no ``validation_runner`` is injected the node is a no-op that
+    records ``validation_skipped`` (used by tests and minimal setups).
     """
     if validation_runner is None:
+        logger.info(
+            "Audit agent skipped Validation agent for claim %s (no runner wired).",
+            state["claim_id"],
+        )
         return {"validation_result": None, "validation_skipped": True}
+    logger.info("Audit agent dispatching Validation agent for claim %s.", state["claim_id"])
     try:
         result = await validation_runner(state.get("validation_request"))
     except Exception as exc:
+        logger.exception("Validation agent raised for claim %s.", state["claim_id"])
         return _fatal(
             "validation_agent",
             "validation_agent_crashed",
             f"Validation agent raised: {exc}",
             retryable=True,
         )
+    if result is None:
+        logger.warning(
+            "Validation agent returned no result for claim %s; "
+            "validation_response will not be persisted.",
+            state["claim_id"],
+        )
+    else:
+        logger.info(
+            "Audit agent received Validation result for claim %s: status=%s",
+            state["claim_id"],
+            getattr(result, "status", None),
+        )
     return {"validation_result": result, "validation_skipped": False}
 
 
 async def store_responses_node(state: AuditAgentState, *, tools: dict[str, AuditTool]) -> dict:
-    """Persist the policy/validation envelopes into ``agent_response``."""
+    """Write the policy/validation envelopes onto the claim's ``agent_response`` row."""
+    policy_result = state.get("policy_result")
+    validation_result = state.get("validation_result")
+    logger.info(
+        "Audit agent storing agent response for claim %s: policy=%s validation=%s",
+        state["claim_id"],
+        policy_result is not None,
+        validation_result is not None,
+    )
     tool = _require_tool(tools, "store_agent_response")
     try:
         record = await tool.run(
             claim_id=state["claim_id"],
-            policy_result=state.get("policy_result"),
-            validation_result=state.get("validation_result"),
+            policy_result=policy_result,
+            validation_result=validation_result,
         )
     except AuditToolError as exc:
         return _tool_failure(exc)
@@ -258,9 +331,17 @@ async def aggregate_result_node(
     try:
         result = aggregator(state)
     except Exception as exc:
+        logger.exception("Result aggregation failed for claim %s.", state["claim_id"])
         return _fatal(
             "audit_agent", "aggregation_failed", f"Result aggregation failed: {exc}"
         )
+    logger.info(
+        "Audit agent aggregated result for claim %s: decision=%s priority=%s errors=%d",
+        state["claim_id"],
+        getattr(result.ai_decision, "value", result.ai_decision),
+        getattr(result.priority, "value", result.priority),
+        len(result.errors),
+    )
     return {"final_result": result}
 
 
@@ -278,6 +359,7 @@ async def finish_node(state: AuditAgentState, *, tools: dict[str, AuditTool]) ->
         )
     except AuditToolError as exc:
         return _tool_failure(exc)
+    logger.info("Audit agent completed run for claim %s.", result.claim_id)
     return {}
 
 
@@ -291,6 +373,11 @@ async def mark_failed_node(state: AuditAgentState, *, tools: dict[str, AuditTool
     claim_id = state["claim_id"]
     errors = state.get("errors") or []
     error = state.get("fatal") or (errors[-1] if errors else None)
+    logger.warning(
+        "Audit agent marking claim %s as failed: %s",
+        claim_id,
+        _failure_notes(error),
+    )
 
     tool = _require_tool(tools, "update_audit_run_status")
     try:
@@ -342,6 +429,7 @@ def build_audit_agent(
     aggregator: Callable[[AuditAgentState], AuditResult],
     tools: dict[str, AuditTool],
     map_policy_request: Callable = map_to_policy_request,
+    map_validation_request: Callable = map_to_validation_request,
     validation_runner: Callable | None = None,
 ) -> CompiledStateGraph:
     """Compile the Audit Agent orchestration graph with injected dependencies."""
@@ -357,6 +445,7 @@ def build_audit_agent(
         partial(
             map_requests_node,
             map_policy_request=map_policy_request,
+            map_validation_request=map_validation_request,
         ),
     )
     graph.add_node("dispatch", dispatch_node)
@@ -398,6 +487,7 @@ def build_audit_agent(
 
 async def run_audit_agent(graph: CompiledStateGraph, claim_id: int) -> AuditResult:
     """Run the compiled audit graph once and return its final result."""
+    logger.info("Audit agent starting graph run for claim %s.", claim_id)
     final_state = await graph.ainvoke({"claim_id": claim_id})
     result = final_state.get("final_result")
     if result is None:
@@ -414,6 +504,12 @@ async def run_audit_agent(graph: CompiledStateGraph, claim_id: int) -> AuditResu
             ],
             reasons=["The audit run did not complete."],
         )
+    logger.info(
+        "Audit agent finished graph run for claim %s: run_status=%s decision=%s",
+        claim_id,
+        getattr(result.ai_run_status, "value", result.ai_run_status),
+        getattr(result.ai_decision, "value", result.ai_decision),
+    )
     return result
 
 

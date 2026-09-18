@@ -1,22 +1,24 @@
 """Validation Agent contracts.
 
-Input reuses the OCR envelope (``OCRResponse``) so extraction and validation
-cannot drift. Output is a structured, auditable result the Audit Agent
-aggregates and that ``store_validation_result`` persists into
+Input combines the OCR ``Extraction`` output with the minimal claim/employee
+context the deterministic rules need (claimed amounts, receipt presence,
+account). Output is a structured, auditable result the Audit Agent aggregates
+and that ``store_validation_result`` persists into
 ``agent_response.validation_response``.
 
 See ``docs/agents/validation-agent.md`` and ``docs/schemas/data-contracts.md``.
 """
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.extraction import (
     AccommodationExtraction,
+    Extraction,
     FoodMealsExtraction,
-    OCRResponse,
     OtherExtraction,
     TravelExtraction,
 )
@@ -26,7 +28,7 @@ _EXTRACTION_BY_CATEGORY = {
     "FOOD_MEALS": FoodMealsExtraction,
     "TRAVEL": TravelExtraction,
     "ACCOMMODATION": AccommodationExtraction,
-    "OTHERS": OtherExtraction,
+    "OTHER": OtherExtraction,
 }
 
 
@@ -73,30 +75,38 @@ class ValidationAgentStatus(str, Enum):
 # ---------------------------------------------------------------------------
 
 
-class ValidationRequest(OCRResponse):
-    """OCR payload plus optional persist targeting.
+class ValidationRequest(BaseModel):
+    """OCR extraction plus the minimal claim/employee context.
 
-    ``claim_id`` is required to insert into ``agent_response`` and to exclude
-    the current claim from duplicate search. ``persist`` defaults to true;
-    the insert is skipped when ``claim_id`` is missing.
+    ``category`` drives the discriminated ``extraction`` payload; both must
+    agree. ``claim_id`` is required to insert into ``agent_response`` and to
+    exclude the current claim from duplicate search. ``persist`` defaults to
+    true; the insert is skipped when ``claim_id`` is missing.
     """
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     claim_id: int | None = None
     persist: bool = True
+
+    category: Literal["FOOD_MEALS", "TRAVEL", "ACCOMMODATION", "OTHER"]
+    employee_id: str
+    submitted_at: datetime
+    account_id: str | None = None
+    claim_amount: Decimal
+    currency: str | None = None
+    merchant_name: str | None = None
+    receipt_provided: bool = False
+    category_data: dict[str, Any] = Field(default_factory=dict)
+
+    extraction: Extraction
 
     @model_validator(mode="before")
     @classmethod
     def _coerce_extraction_by_category(cls, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
-        submission = data.get("submission")
-        category = (
-            submission.get("expense_category")
-            if isinstance(submission, dict)
-            else None
-        )
+        category = data.get("category")
         extraction = data.get("extraction")
         model = _EXTRACTION_BY_CATEGORY.get(category)
         if model is not None and isinstance(extraction, dict):

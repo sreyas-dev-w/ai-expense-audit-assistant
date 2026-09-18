@@ -82,13 +82,14 @@ async def test_happy_path_completes_and_persists(tmp_path):
     assert claim.ai_run_status == AIRunStatus.COMPLETED
     assert claim.ai_decision == AIDecision.REVIEW
     assert claim.priority == ClaimPriority.MEDIUM
-    assert claim.auditer_notes and "review" in claim.auditer_notes
+    assert claim.auditer_notes is None
     assert claim.category_data["merchant_name"] == "Zulu Bistro"
 
     response = store[("agent_response", 1)]
     assert response.claim_id == CLAIM_ID
     assert response.policy_response["output"]["decision"] == "FLAG_FOR_REVIEW"
     assert response.confidence_score is not None
+    assert response.notes and "review" in response.notes
 
     final_state = await graph.ainvoke({"claim_id": CLAIM_ID})
     assert final_state["validation_skipped"] is True
@@ -113,6 +114,11 @@ async def test_validation_runner_is_called_when_injected(tmp_path):
     assert final_state["validation_skipped"] is False
     assert final_state["validation_result"] == {"validated": True}
     assert store[("agent_response", 1)].validation_response == {"validated": True}
+    from app.schemas.validation import ValidationRequest
+
+    assert isinstance(final_state["validation_request"], ValidationRequest)
+    assert final_state["validation_request"].claim_id == CLAIM_ID
+    assert final_state["validation_request"].category == "FOOD_MEALS"
 
 
 async def test_missing_claim_marks_run_failed():
@@ -140,6 +146,9 @@ async def test_missing_receipt_url_marks_run_failed():
     assert result.errors[0].code == "missing_receipt_url"
     assert store[("claims", CLAIM_ID)].ai_run_status == AIRunStatus.FAILED
     assert store[("claims", CLAIM_ID)].status == ClaimStatus.SUBMITTED
+    # The AI failure note goes to agent_response.notes; auditer_notes is manual-only.
+    assert store[("claims", CLAIM_ID)].auditer_notes is None
+    assert "missing_receipt_url" in store[("agent_response", 1)].notes
 
 
 async def test_ocr_failure_routes_to_mark_failed(tmp_path):

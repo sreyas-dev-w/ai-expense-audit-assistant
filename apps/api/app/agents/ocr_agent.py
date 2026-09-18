@@ -1,7 +1,9 @@
+import logging
 from typing import TypedDict, Optional
 
 from langgraph.graph import StateGraph, START, END
 
+from app.core.logging import to_loggable
 from app.schemas.extraction import (
     FoodMealsExtraction,
     TravelExtraction,
@@ -10,6 +12,8 @@ from app.schemas.extraction import (
     Extraction,
 )
 from app.services.ocr_extraction_gemini_service import GeminiService
+
+logger = logging.getLogger(__name__)
 
 
 class OCRState(TypedDict, total=False):
@@ -89,7 +93,12 @@ class OCRAgent:
                 "Supported formats are PNG, JPEG, and PDF."
             )
 
-        print(f"[OCR] Validating {expense_category} receipt extraction.")
+        logger.info(
+            "OCR agent input: expense_category=%s mime_type=%s receipt_bytes=%d",
+            expense_category,
+            mime_type,
+            len(receipt_bytes),
+        )
         return state
 
     async def _extract_receipt(self, state: OCRState) -> OCRState:
@@ -99,7 +108,7 @@ class OCRAgent:
         receipt_bytes = state["receipt_bytes"]
         mime_type = state["mime_type"]
 
-        print(f"[OCR] Extracting {expense_category} receipt with Gemini.")
+        logger.info("OCR agent extracting %s receipt with Gemini.", expense_category)
 
         extraction = await self.gemini_service.extract_receipt(
             receipt_bytes=receipt_bytes,
@@ -107,6 +116,6 @@ class OCRAgent:
             expense_category=expense_category,
         )
 
-        print(f"[OCR] Extraction completed.")
+        logger.info("OCR agent output: %s", to_loggable(extraction))
         state["extraction"] = extraction
         return state

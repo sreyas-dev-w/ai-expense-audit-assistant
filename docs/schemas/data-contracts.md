@@ -66,8 +66,8 @@ Validation domain schemas are defined once in `apps/api/app/schemas/validation.p
 - Agent output: `ValidationAgentOutput` (verdict, findings, checks, duplicate candidates, budget
   snapshot, authenticity, confidence) wrapped in `ValidationAgentResult` with explicit
   `error` / `status`. HTTP adds `stored_agent_response_id` on `ValidationEvaluateResponse`.
-- Persistence: `ValidationService.store_validation_result(claim_id, result)` inserts a new
-  `agent_response` row with `validation_response` JSONB. ERROR envelopes are not written.
+- Persistence: `ValidationService.store_validation_result(claim_id, result)` updates the claim's `agent_response`
+  row (created at claim submission) with `validation_response` JSONB. ERROR envelopes are not written.
 - Policy handoff: `to_policy_evaluation_request(ocr)` in
   `apps/api/app/services/policy_request_mapper.py` builds `PolicyEvaluationRequest` from the same
   OCR envelope. Policy RAG does **not** consume validation findings.

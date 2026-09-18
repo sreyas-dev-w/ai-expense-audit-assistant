@@ -71,9 +71,9 @@ superstep* (`dispatch → [run_policy | run_validation]`). The two analyses are 
 the stored extraction — so running them concurrently cuts audit latency in half and matches the requirement that policy
 and validation be evaluated in parallel. The Document Translation / Accommodation flows remain sequential.
 
-The Validation Agent is **not implemented yet**: the `run_validation` node is a stub that records
-`validation_skipped=True` until a `validation_runner` is injected (see `app/agents/audit_agent.py` and
-`app/agents/mappers/validation_request_mapper.py`).
+The Validation Agent runs in the same superstep as the Policy RAG Agent via an injected `validation_runner`
+(`app/agents/audit_agent.py`, wired in `app/services/audit_service.py`); when no runner is injected the `run_validation`
+node falls back to recording `validation_skipped=True`.
 
 Failure-free path: `load_claim → begin_run → fetch_receipt → run_ocr → store_extraction → map_requests →
 dispatch → [run_policy | run_validation] → store_responses → aggregate_result → finish`.

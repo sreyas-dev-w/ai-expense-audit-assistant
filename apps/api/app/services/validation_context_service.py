@@ -51,7 +51,7 @@ class ValidationContextService:
                 )
                 claims = ClaimRepository(session)
                 prior = await claims.list_employee_claims(
-                    request.submission.employee_id,
+                    request.employee_id,
                     exclude_claim_id=request.claim_id,
                 )
                 duplicates = score_duplicate_candidates(
@@ -77,9 +77,9 @@ class ValidationContextService:
         amount: Decimal,
     ) -> tuple[BudgetSnapshot | None, list[str]]:
         warnings: list[str] = []
-        account_id = request.employee_context.account_id
+        account_id = request.account_id
         if not account_id:
-            warnings.append("budget_check_skipped: employee context has no account_id")
+            warnings.append("budget_check_skipped: claim context has no account_id")
             return None, warnings
 
         account = await EmployeeRepository(session).get_account(account_id)

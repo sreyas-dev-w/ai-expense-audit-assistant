@@ -8,5 +8,5 @@ stages — they never re-define a schema.
 
 - ``category_data_mapper`` — extraction ↔ canonical ``category_data`` models.
 - ``policy_request_mapper`` — extraction + claim context → ``PolicyEvaluationRequest``.
-- ``validation_request_mapper`` — reserved for the future Validation Agent.
+- ``validation_request_mapper`` — extraction + claim context → ``ValidationRequest``.
 """

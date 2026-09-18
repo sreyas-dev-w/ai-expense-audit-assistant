@@ -1,18 +1,21 @@
 """Application service for the Validation Agent.
 
-Runs the LangGraph subgraph, optionally persists SUCCESS output into
-``agent_response.validation_response``, and exposes the Policy RAG request
-mapper. Agents never open database sessions; persist uses a short write
-transaction after the graph returns.
+Runs the LangGraph subgraph, optionally persists SUCCESS output into the
+claim's existing ``agent_response.validation_response`` (the row is created
+eagerly at claim submission), and exposes the Policy RAG request mapper. Agents
+never open database sessions; persist uses a short write transaction after the
+graph returns.
 """
 from decimal import Decimal
 
+from app.agents.mappers.policy_request_mapper import map_to_policy_request
 from app.agents.validation_agent import run_validation_agent
 from app.db.session import async_session_factory
 from app.repositories.agent_response_repository import AgentResponseRepository
 from app.repositories.claim_repository import ClaimRepository
 from app.rules.constants import NOTES_MAX_LENGTH
-from app.schemas.extraction import OCRResponse
+from app.schemas.audit import ClaimAuditContext
+from app.schemas.extraction import Extraction
 from app.schemas.policy import PolicyEvaluationRequest
 from app.schemas.validation import (
     ValidationAgentResult,
@@ -21,7 +24,6 @@ from app.schemas.validation import (
     ValidationRequest,
 )
 from app.services.gemini_client import GeminiClient
-from app.services.policy_request_mapper import to_policy_evaluation_request
 from app.services.validation_context_service import ValidationContextService
 
 
@@ -78,7 +80,7 @@ class ValidationService:
         claim_id: int,
         result: ValidationAgentResult,
     ) -> int | None:
-        """Insert ``validation_response`` for ``claim_id``. SUCCESS output only."""
+        """Write ``validation_response`` onto the claim's row. SUCCESS output only."""
         if (
             result.status != ValidationAgentStatus.SUCCESS
             or result.output is None
@@ -97,7 +99,7 @@ class ValidationService:
                 raise ClaimNotFoundError(claim_id)
             repository = AgentResponseRepository(session)
             try:
-                row = await repository.insert_validation_response(
+                row = await repository.update_validation_response(
                     claim_id=claim_id,
                     validation_response=payload,
                     notes=notes,
@@ -115,8 +117,11 @@ class ValidationService:
 
     def build_policy_request(
         self,
-        ocr: OCRResponse,
+        extraction: Extraction,
         *,
-        claim_id: int | None = None,
+        context: ClaimAuditContext,
+        category_data: dict | None = None,
     ) -> PolicyEvaluationRequest:
-        return to_policy_evaluation_request(ocr, claim_id=claim_id)
+        return map_to_policy_request(
+            extraction, context=context, category_data=category_data
+        )
