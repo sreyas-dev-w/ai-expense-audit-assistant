@@ -39,6 +39,42 @@ class ClaimRepository:
     async def get_employee(self, employee_id: str) -> Employee | None:
         return await self._session.get(Employee, employee_id)
 
+    
+    async def update_audit_fields(
+        self,
+        claim_id: int,
+        *,
+        status: ClaimStatus,
+        priority: ClaimPriority,
+        auditer_id: str,
+        auditer_notes: str | None = None,
+    ) -> Claim | None:
+        """
+        Update manager/auditor-controlled fields for a claim.
+
+        Only the following claim fields are modified:
+        - status
+        - priority
+        - auditer_id
+        - auditer_notes
+
+        claim_updated_at is also updated automatically.
+        """
+        claim = await self._session.get(Claim, claim_id)
+
+        if claim is None:
+            return None
+
+        claim.status = status
+        claim.priority = priority
+        claim.auditer_id = auditer_id
+        claim.auditer_notes = auditer_notes
+        claim.claim_updated_at = _now()
+
+        await self._session.flush()
+
+        return claim
+    
     async def create(
         self,
         *,
@@ -129,17 +165,79 @@ class ClaimRepository:
         limit: int = EMPLOYEE_CLAIM_SCAN_LIMIT,
     ) -> list[dict[str, Any]]:
         stmt = select(Claim).where(Claim.employee_id == employee_id)
+
         if exclude_claim_id is not None:
             stmt = stmt.where(Claim.claim_id != exclude_claim_id)
+
         stmt = stmt.order_by(Claim.claim_id.desc()).limit(limit)
-        rows = list((await self._session.execute(stmt)).scalars().all())
+
+        rows = list(
+            (await self._session.execute(stmt)).scalars().all()
+        )
+
         return [_claim_row(claim) for claim in rows]
+
+    # ============================================================
+    # GET ALL CLAIM DETAILS FOR AN EMPLOYEE
+    # ============================================================
+
+    async def get_claims_by_employee_id(
+        self,
+        employee_id: str,
+    ) -> list[dict[str, Any]]:
+        """
+        Fetch all claims belonging to an employee.
+
+        The employee_id in claims.employee_id is used to
+        identify the employee who submitted the claim.
+        """
+
+        query = (
+            select(Claim)
+            .where(Claim.employee_id == employee_id)
+            .order_by(Claim.claim_created_at.desc())
+        )
+
+        result = await self._session.execute(query)
+        claims = result.scalars().all()
+
+        return [
+            {
+                "claim_id": claim.claim_id,
+                "business_purpose": claim.business_purpose,
+                "merchant_name": claim.merchant_name,
+                "category": claim.category.value,
+                "category_data": claim.category_data,
+                "employee_id": claim.employee_id,
+                "auditer_id": claim.auditer_id,
+                "auditer_notes": claim.auditer_notes,
+                "project_code": claim.project_code,
+                "claim_amount": claim.claim_amount,
+                "tax_amount": claim.tax_amount,
+                "currency": claim.currency.value,
+                "status": claim.status.value,
+                "priority": claim.priority.value,
+                "ai_run_status": claim.ai_run_status.value,
+                "ai_decision": (
+                    claim.ai_decision.value
+                    if claim.ai_decision is not None
+                    else None
+                ),
+                "receipt_url": claim.receipt_url,
+                "claim_created_at": claim.claim_created_at,
+                "claim_updated_at": claim.claim_updated_at,
+                "receipt_created_at": claim.receipt_created_at,
+            }
+            for claim in claims
+        ]
 
 
 def _claim_row(claim: Claim) -> dict[str, Any]:
     amount = claim.claim_amount
+
     if amount is not None and not isinstance(amount, Decimal):
         amount = Decimal(str(amount))
+
     return {
         "claim_id": claim.claim_id,
         "employee_id": claim.employee_id,
