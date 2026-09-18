@@ -1,6 +1,6 @@
 "use client"
 
-import { Loader2Icon, OctagonAlertIcon } from "lucide-react"
+import { Loader2Icon, OctagonAlertIcon } from "@/components/icons"
 import { RecommendationHeader } from "@/components/audit/recommendation-header"
 import { ValidationFindings } from "@/components/audit/validation-findings"
 import { PolicyFindings } from "@/components/audit/policy-findings"

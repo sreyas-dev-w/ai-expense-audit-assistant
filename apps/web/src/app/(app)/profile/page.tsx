@@ -1,6 +1,6 @@
 "use client"
 
-import { BriefcaseIcon, BuildingIcon, ShieldCheckIcon, UserIcon } from "lucide-react"
+import { BriefcaseIcon, BuildingIcon, ShieldCheckIcon, UserIcon } from "@/components/icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useSession } from "@/hooks/use-session"

@@ -1,4 +1,4 @@
-import { FileIcon, ImageOffIcon } from "lucide-react"
+import { FileIcon, ImageOffIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 
 /**

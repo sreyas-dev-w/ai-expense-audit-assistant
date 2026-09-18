@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { FileQuestionIcon, SearchIcon } from "lucide-react"
+import { FileQuestionIcon, SearchIcon } from "@/components/icons"
 import {
   Table,
   TableBody,

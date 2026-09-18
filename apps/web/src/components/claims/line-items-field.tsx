@@ -1,6 +1,6 @@
 "use client"
 
-import { PlusIcon, Trash2Icon } from "lucide-react"
+import { PlusIcon, Trash2Icon } from "@/components/icons"
 import { useFieldArray, type UseFormReturn } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

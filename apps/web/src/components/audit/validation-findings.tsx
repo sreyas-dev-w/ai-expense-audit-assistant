@@ -1,4 +1,4 @@
-import { CopyIcon } from "lucide-react"
+import { CopyIcon } from "@/components/icons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SeverityBadge, CheckStatusBadge } from "@/components/claims/status-badge"
 import { formatMoney, formatPercent, toTitleCase } from "@/lib/format"

@@ -3,7 +3,7 @@
 import { use, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeftIcon } from "lucide-react"
+import { ArrowLeftIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {

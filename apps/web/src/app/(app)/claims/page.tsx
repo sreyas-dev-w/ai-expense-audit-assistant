@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { PlusIcon } from "lucide-react"
+import { PlusIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { ClaimsTable } from "@/components/claims/claims-table"
 import { useEmployeeClaims } from "@/hooks/use-claims"

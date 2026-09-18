@@ -1,5 +1,5 @@
 import { cn } from "cn"
-import { CircleCheckIcon, CircleXIcon, TriangleAlertIcon } from "lucide-react"
+import { CircleCheckIcon, CircleXIcon, TriangleAlertIcon } from "@/components/icons"
 import type { AIDecision, ClaimPriority } from "@/lib/types/api"
 import { formatPercent, toTitleCase } from "@/lib/format"
 import { PriorityBadge } from "@/components/claims/status-badge"

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { CheckIcon, RotateCcwIcon, XIcon } from "lucide-react"
+import { CheckIcon, RotateCcwIcon, XIcon } from "@/components/icons"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"

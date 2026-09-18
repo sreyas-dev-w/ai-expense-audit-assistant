@@ -1,4 +1,4 @@
-import { QuoteIcon } from "lucide-react"
+import { QuoteIcon } from "@/components/icons"
 import {
   Accordion,
   AccordionContent,

@@ -9,7 +9,7 @@ import {
   PlusCircleIcon,
   ScaleIcon,
   UserIcon,
-} from "lucide-react"
+} from "@/components/icons"
 import {
   Sidebar,
   SidebarContent,
