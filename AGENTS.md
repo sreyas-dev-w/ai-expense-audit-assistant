@@ -28,9 +28,10 @@ produces a structured, grounded recommendation.
 └── AGENTS.md
 ```
 
-Backend module layout: `apps/api/app/` → `api/` (routers), `core/` (config), `db/` (session + migrations),
-`models/` (ORM), `schemas/` (Pydantic contracts), `repositories/`, `services/`, `agents/` (LangGraph),
-`rules/` (deterministic validation), `prompts/`, `tools/` (planned).
+Backend module layout: `apps/api/app/` → `api/` (routers: audits/claims/policies/validation/health),
+`routers/` (OCR extraction), `core/` (config, logging, dependencies), `db/` (session + migrations + base),
+`models/` (ORM), `schemas/` (Pydantic contracts), `repositories/`, `services/`, `agents/` (LangGraph + mappers),
+`tools/` (agent tools), `rules/` (deterministic validation), `prompts/`, `utils/`.
 
 ## Ground Rules
 
@@ -65,11 +66,13 @@ Layered:
 API → Application/Workflow → Agents → Tools/Services → Infrastructure → PostgreSQL / External services
 ```
 
-Sequential LangGraph workflow orchestrated by the **Audit Agent**:
+LangGraph workflow orchestrated by the **Audit Agent**. The Validation Agent and Policy RAG Agent run in parallel;
+final aggregation is deterministic application code (no LLM):
 
 ```text
-Audit Agent → OCR & Extraction Agent → Audit Agent → Validation Agent → Audit Agent →
-Policy RAG Agent → Audit Agent (aggregate + persist) → Manager/Auditor
+Audit Agent → OCR & Extraction Agent → Audit Agent
+  → [Validation Agent | Policy RAG Agent]  (parallel)
+  → Audit Agent (aggregate + persist) → Manager/Auditor
 ```
 
 Per-agent files: `docs/agents/orchestration.md`, `audit-agent.md`, `extraction-agent.md`,
@@ -92,7 +95,12 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
-- Health: `http://localhost:8000/api/v1/health`
 - Interactive docs: `http://localhost:8000/docs`
+- Health: `app/api/health.py` (`GET /health`) exists but is **not yet** included in `main.py`.
 
-(Tests and lint configuration arrive with the backend implementation.)
+Tests:
+
+```bash
+cd apps/api
+.venv/bin/python -m pytest          # asyncio mode auto; tests under apps/api/tests
+```

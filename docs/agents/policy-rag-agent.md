@@ -47,8 +47,8 @@ requirements.
 
 ## Implemented Agent
 
-The agent is a LangGraph subgraph in `app/agents/policy_rag_agent.py` (built with the `@tool`-free, tool-based
-design — it uses narrow service dependencies, never SQL):
+The agent is a LangGraph subgraph in `app/agents/policy_rag_agent.py`. It uses narrow service dependencies — never SQL
+or raw database sessions; retrieval is a plain service call, not an agent tool:
 
 ```text
 build_query → retrieve_policy → (route) → reason | insufficient_context | error_terminal
@@ -62,6 +62,7 @@ build_query → retrieve_policy → (route) → reason | insufficient_context | 
 - **Retrieval:** `rag_service.search` under a configured `top_k`; empty or sub-threshold context routes to
   `insufficient_context` (flagged, not failed) so no unsupported claims are drawn.
 - **Entry points:** `run_policy_agent(request, ...)` for one-off calls; `build_policy_agent(rag_service,
-  llm_client)` returns the compiled graph for embedding into the audit orchestration graph.
+  llm_client)` returns the compiled graph for embedding into the audit orchestration graph. Inside the Audit Agent
+  graph it runs in the `dispatch` superstep **in parallel** with the Validation Agent.
 - **LLM:** Gemini Flash via `services/gemini_client.py` (`generate_structured` with `response_schema`), with
   explicit timeouts and retries. System prompt: `app/prompts/policy_evaluation_prompt.txt`.

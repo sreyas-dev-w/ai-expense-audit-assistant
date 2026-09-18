@@ -23,14 +23,20 @@ The LLM must **not** directly construct or execute arbitrary SQL.
 
 ## Tool Design
 
-Tools expose narrow, well-defined operations. The exact tool set should evolve with the domain. Examples:
+Tools expose narrow, well-defined operations. The Audit Agent is built with the concrete tool set from
+`app/tools/__init__.py` (`build_audit_tools`):
 
-```text
-update_extraction_result(...)
-store_validation_result(...)
-store_policy_result(...)
-update_audit_status(...)
-```
+| Tool | Operation |
+|---|---|
+| `get_claim` | Load a claim + employee into a `ClaimAuditContext` for the workflow |
+| `update_audit_run_status` | Set `claims.ai_run_status` (pending / running / failed) |
+| `fetch_receipt` | Read the claim's receipt bytes (http(s) or local path) into the OCR stage |
+| `store_extraction` | Persist the OCR extraction onto `claims.category_data` |
+| `store_agent_response` | Write the policy / validation envelope into `agent_response` (JSONB + confidence) |
+| `update_claim_result` | Persist the final aggregated decision support onto the claim at the end of the run |
+
+Each tool opens a short-lived database transaction that commits/rollbacks/closes around a single operation (no
+long-lived transactions across LLM calls) and raises `AuditToolError` (code + retryability) on failure.
 
 Tools must:
 

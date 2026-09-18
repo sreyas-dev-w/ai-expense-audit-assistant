@@ -60,17 +60,19 @@ RAG agent, and services:
 
 Validation domain schemas are defined once in `apps/api/app/schemas/validation.py`:
 
-- Agent input: `ValidationRequest` — the OCR envelope (`submission` + `employee_context` +
-  `extraction`) plus optional `claim_id` / `persist`. Category-specific extraction is coerced from
-  `submission.expense_category` so the four OCR unions cannot silently drop fields.
-- Agent output: `ValidationAgentOutput` (verdict, findings, checks, duplicate candidates, budget
-  snapshot, authenticity, confidence) wrapped in `ValidationAgentResult` with explicit
-  `error` / `status`. HTTP adds `stored_agent_response_id` on `ValidationEvaluateResponse`.
+- Agent input: `ValidationRequest` — a **flat** envelope combining the OCR `extraction` with the minimal
+  claim/employee/account context the deterministic rules need: `claim_id`, `persist`, `category`, `employee_id`,
+  `submitted_at`, `account_id`, `claim_amount`, `currency`, `merchant_name`, `receipt_provided`, `category_data`,
+  and `extraction`. `category` drives the discriminated `extraction` payload (a before-validator coerces it), so the
+  four OCR unions cannot silently drop fields (`apps/api/app/schemas/validation.py`).
+- Agent output: `ValidationAgentOutput` (verdict, confidence, findings, checks, warnings, duplicate candidates,
+  budget snapshot, authenticity, summary) wrapped in `ValidationAgentResult` with explicit `error` / `status`.
+  HTTP adds `stored_agent_response_id` on `ValidationEvaluateResponse`.
 - Persistence: `ValidationService.store_validation_result(claim_id, result)` updates the claim's `agent_response`
   row (created at claim submission) with `validation_response` JSONB. ERROR envelopes are not written.
-- Policy handoff: `to_policy_evaluation_request(ocr)` in
-  `apps/api/app/services/policy_request_mapper.py` builds `PolicyEvaluationRequest` from the same
-  OCR envelope. Policy RAG does **not** consume validation findings.
+- Policy handoff: `map_to_policy_request(...)` in
+  `apps/api/app/agents/mappers/policy_request_mapper.py` builds `PolicyEvaluationRequest` from the claim context
+  and canonical category data. Policy RAG does **not** consume validation findings.
 
 ## Outcome
 
