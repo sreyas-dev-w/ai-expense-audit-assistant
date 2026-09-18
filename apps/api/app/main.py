@@ -27,6 +27,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(health.router)
 app.include_router(ocr_router)
 app.include_router(audits.router, prefix="/api/v1")
 app.include_router(claims.router, prefix="/api/v1")
