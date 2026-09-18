@@ -18,7 +18,8 @@ from fastapi import (
 )
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.schemas.agent_response import AgentResponseDetails
+from app.services.agent_response_service import AgentResponseService
 from app.core.dependencies import get_claim_submission_service
 from app.db.session import get_db
 from app.schemas.claim import (
@@ -85,6 +86,35 @@ async def submit_claim(
     )
 
     return submission
+
+@router.get(
+    "/managers/{manager_id}/claims",
+    response_model=list[ClaimDetailsResponse],
+    summary="Get all claims for a manager's employees",
+)
+async def get_manager_claims(
+    manager_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await ClaimService.get_claims_by_manager_id(
+        db=db,
+        manager_id=manager_id,
+    )
+
+@router.get(
+    "/{claim_id}/agent-response",
+    response_model=AgentResponseDetails,
+    summary="Get agent response for a claim",
+)
+async def get_agent_response(
+    claim_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    return await AgentResponseService.get_by_claim_id(
+        db=db,
+        claim_id=claim_id,
+    )
+
 
 @router.patch(
     "/{claim_id}/audit",

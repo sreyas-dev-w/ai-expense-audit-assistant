@@ -26,6 +26,20 @@ class AgentResponseRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+
+    async def get_by_claim_id(
+        self,
+        claim_id: int,
+    ) -> AgentResponse | None:
+
+        result = await self._session.execute(
+            select(AgentResponse).where(
+                AgentResponse.claim_id == claim_id
+            )
+        )
+
+        return result.scalar_one_or_none()
+    
     async def create_for_claim(self, *, claim_id: int) -> AgentResponse:
         """Insert the claim's ``agent_response`` row with nullable fields empty."""
         row = AgentResponse(claim_id=claim_id)

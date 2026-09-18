@@ -216,6 +216,17 @@ class ClaimService:
             employee_id
         )
 
+    @staticmethod
+    async def get_claims_by_manager_id(
+        db: AsyncSession,
+        manager_id: str,
+    ):
+        claim_repository = ClaimRepository(db)
+
+        return await claim_repository.get_claims_by_manager_id(
+            manager_id
+        )
+
     
     @staticmethod
     async def update_claim_audit(

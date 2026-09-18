@@ -8,6 +8,7 @@ boundaries so no session is ever held across an LLM/agent call
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
+from unittest import result
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,7 +75,27 @@ class ClaimRepository:
         await self._session.flush()
 
         return claim
-    
+
+
+    async def get_claims_by_manager_id(
+        self,
+        manager_id: str,
+    ) -> list[Claim]:
+
+        result = await self._session.execute(
+            select(Claim)
+            .join(
+                Employee,
+                Claim.employee_id == Employee.employee_id,
+            )
+            .where(
+                Employee.manager_id == manager_id
+            )
+        )
+
+        return list(result.scalars().all())
+
+
     async def create(
         self,
         *,
