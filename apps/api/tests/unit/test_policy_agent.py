@@ -29,6 +29,8 @@ async def test_success_path(food_meals_request):
     assert result.output.violations[0].related_chunk_ids == [1]
     # references were back-filled from retrieval when the model returned none
     assert [r.chunk_id for r in result.output.references] == [1]
+    # the policy document filename rides along in each grounding reference
+    assert result.output.references[0].policy_filename == "expense_policy_v1.pdf"
     # the LLM actually received the retrieved policy context
     assert SAMPLE_CHUNK.content in llm.last_contents
 

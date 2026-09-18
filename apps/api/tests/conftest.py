@@ -97,6 +97,7 @@ def default_llm_payload() -> dict:
 SAMPLE_CHUNK = RetrievedPolicyChunk(
     chunk_id=1,
     policy_id=1,
+    policy_filename="expense_policy_v1.pdf",
     content=(
         "3. MEAL REIMBURSEMENT Meal reimbursement is provided for business "
         "meals. Dinner has a per-meal limit of 1,500 INR. Alcohol is not "

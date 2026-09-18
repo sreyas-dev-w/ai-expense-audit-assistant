@@ -91,6 +91,7 @@ class ClaimRepository:
             .where(
                 Employee.manager_id == manager_id
             )
+            .order_by(Claim.claim_created_at.desc())
         )
 
         return list(result.scalars().all())

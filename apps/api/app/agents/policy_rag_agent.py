@@ -351,6 +351,7 @@ def _references_from_chunks(
         PolicyReference(
             chunk_id=chunk.chunk_id,
             policy_id=chunk.policy_id,
+            policy_filename=chunk.policy_filename,
             content=chunk.content,
             similarity_score=chunk.similarity_score,
         )

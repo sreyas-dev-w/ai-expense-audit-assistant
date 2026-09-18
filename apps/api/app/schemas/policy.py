@@ -73,6 +73,7 @@ class PolicySearchRequest(BaseModel):
 class RetrievedPolicyChunk(BaseModel):
     chunk_id: int
     policy_id: int
+    policy_filename: str | None = None
     content: str
     metadata_: dict[str, Any] | None = Field(default=None, alias="metadata")
     similarity_score: float
@@ -192,6 +193,7 @@ class PolicyReference(BaseModel):
 
     chunk_id: int
     policy_id: int
+    policy_filename: str | None = None
     content: str
     similarity_score: float | None = None
 

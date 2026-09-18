@@ -78,9 +78,10 @@ class PolicyRagService:
             RetrievedPolicyChunk(
                 chunk_id=chunk.id,
                 policy_id=chunk.policy_id,
+                policy_filename=filename,
                 content=chunk.content,
                 metadata=chunk.metadata_,
                 similarity_score=similarity,
             )
-            for chunk, similarity in rows
+            for chunk, similarity, filename in rows
         ]

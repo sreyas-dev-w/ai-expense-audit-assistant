@@ -105,25 +105,33 @@ class PolicyRepository:
         top_k: int,
         policy_id: int | None = None,
         similarity_threshold: float | None = None,
-    ) -> list[tuple[PolicyChunk, float]]:
-        """Return (chunk, similarity) pairs ordered most-similar first.
+    ) -> list[tuple[PolicyChunk, float, str | None]]:
+        """Return ``(chunk, similarity, policy_filename)`` triples most-similar first.
 
         Cosine distance ascending == most similar first; similarity is
         ``1 - cosine_distance``. RESULTS may contain fewer than ``top_k`` rows
-        when a threshold filters low-similarity matches out.
+        when a threshold filters low-similarity matches out. The policy
+        filename comes from a join on ``policy_documents`` and may be ``None``
+        for chunks that lost their document.
         """
         distance = PolicyChunk.embeddings.cosine_distance(query_vector)
-        stmt = select(PolicyChunk, (1 - distance).label("similarity")).where(
-            PolicyChunk.embeddings.is_not(None)
+        stmt = (
+            select(
+                PolicyChunk,
+                (1 - distance).label("similarity"),
+                PolicyDocument.filename,
+            )
+            .join(PolicyDocument, PolicyDocument.policy_id == PolicyChunk.policy_id)
+            .where(PolicyChunk.embeddings.is_not(None))
         )
         if policy_id is not None:
             stmt = stmt.where(PolicyChunk.policy_id == policy_id)
         stmt = stmt.order_by(distance.asc()).limit(top_k)
 
         rows = (await self._session.execute(stmt)).all()
-        results: list[tuple[PolicyChunk, float]] = []
-        for chunk, similarity in rows:
+        results: list[tuple[PolicyChunk, float, str | None]] = []
+        for chunk, similarity, filename in rows:
             score = float(similarity)
             if similarity_threshold is None or score >= similarity_threshold:
-                results.append((chunk, score))
+                results.append((chunk, score, filename))
         return results
