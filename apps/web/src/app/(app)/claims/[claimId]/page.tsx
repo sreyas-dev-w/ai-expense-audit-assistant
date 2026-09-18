@@ -2,7 +2,7 @@
 
 import { use } from "react"
 import Link from "next/link"
-import { ArrowLeftIcon } from "lucide-react"
+import { ArrowLeftIcon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -11,7 +11,6 @@ import {
   ClaimStatusBadge,
 } from "@/components/claims/status-badge"
 import { ClaimSummary } from "@/components/claims/claim-summary"
-import { AuditPanel } from "@/components/audit/audit-panel"
 import { useEmployeeClaims } from "@/hooks/use-claims"
 import { useSession } from "@/hooks/use-session"
 
@@ -62,10 +61,7 @@ export default function ClaimDetailPage(props: PageProps<"/claims/[claimId]">) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-        <ClaimSummary claim={claim} />
-        <AuditPanel claim={claim} />
-      </div>
+      <ClaimSummary claim={claim} />
     </div>
   )
 }
