@@ -24,7 +24,11 @@ export function GroundingReferences({ references }: { references: PolicyReferenc
               <AccordionTrigger className="text-sm">
                 <span className="flex items-center gap-2">
                   <QuoteIcon className="size-3.5 text-muted-foreground" />
-                  Policy #{ref.policy_id} · chunk {ref.chunk_id}
+                  {ref.policy_filename !== null && (
+                    <span className="text-muted-foreground">{ref.policy_filename}</span>
+                  )}
+                  {ref.policy_filename === null && <>Policy #{ref.policy_id}</>}
+                  <span className="text-muted-foreground">· chunk {ref.chunk_id}</span>
                   {ref.similarity_score !== null && (
                     <span className="text-xs text-muted-foreground">
                       {formatPercent(ref.similarity_score)} match

@@ -3,11 +3,11 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
-  ClipboardCheckIcon,
   FileTextIcon,
   LogOutIcon,
   PlusCircleIcon,
   ScaleIcon,
+  ShieldCheckIcon,
   UserIcon,
 } from "@/components/icons"
 import {
@@ -42,6 +42,7 @@ export function AppSidebar() {
   const clearSession = useSession((state) => state.clearSession)
 
   const isManager = employee?.is_manager ?? false
+  const isPolicyAdmin = employee?.job_level === "L6"
 
   const items = [
     { href: "/claims/new", label: "New Claim", icon: PlusCircleIcon },
@@ -49,8 +50,17 @@ export function AppSidebar() {
     ...(isManager
       ? [{ href: "/approvals", label: "Approvals", icon: ScaleIcon }]
       : []),
+    ...(isPolicyAdmin
+      ? [{ href: "/policy", label: "Policy", icon: ShieldCheckIcon }]
+      : []),
     { href: "/profile", label: "Profile", icon: UserIcon },
   ]
+
+  const activeItem = items
+    .filter(
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )
+    .sort((a, b) => b.href.length - a.href.length)[0]
 
   function handleLogout() {
     clearSession()
@@ -60,11 +70,8 @@ export function AppSidebar() {
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <ClipboardCheckIcon className="size-4" />
-          </div>
-          <span className="truncate font-heading text-sm font-semibold">
+        <div className="flex items-center px-2 py-1.5">
+          <span className="truncate font-heading text-base font-semibold">
             Expense Audit
           </span>
         </div>
@@ -75,10 +82,9 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
-                const isActive =
-                  pathname === item.href || pathname.startsWith(`${item.href}/`)
+                const isActive = activeItem?.href === item.href
                 return (
-                  <SidebarMenuItem key={item.href}>
+                  <SidebarMenuItem key={item.href} className="py-0.5">
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
                       <Link href={item.href}>
                         <item.icon />

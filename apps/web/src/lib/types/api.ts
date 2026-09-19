@@ -118,6 +118,29 @@ export interface ProjectDetailsResponse {
 }
 
 // ============================================================
+// Policy documents — /api/v1/policies/documents
+// ============================================================
+
+export interface PolicyDocumentSummary {
+  policy_id: number
+  filename: string
+  policy_version: string | null
+  status: string
+  error: string | null
+  chunk_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface PolicyIngestResult {
+  policy_id: number
+  filename: string
+  doc_hash: string
+  chunk_count: number
+  reingested: boolean
+}
+
+// ============================================================
 // Claim submission (category_data is a discriminated union)
 // ============================================================
 
@@ -253,6 +276,7 @@ export interface AuditAgentError {
 export interface PolicyReference {
   chunk_id: number
   policy_id: number
+  policy_filename: string | null
   content: string
   similarity_score: number | null
 }

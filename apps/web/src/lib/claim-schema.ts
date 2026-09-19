@@ -28,13 +28,6 @@ function isPositiveInt(value: string): boolean {
   return value.trim() !== "" && Number.isInteger(n) && n >= 1
 }
 
-export const lineItemSchema = z.object({
-  item_header: z.string().min(1, "Required"),
-  item_amount: z.string().refine(isPositiveNumber, "Must be greater than 0"),
-})
-
-export type LineItemFormValues = z.infer<typeof lineItemSchema>
-
 export const CATEGORIES = ["FOOD_MEALS", "TRAVEL", "ACCOMMODATION", "OTHER"] as const
 export type Category = (typeof CATEGORIES)[number]
 
@@ -49,7 +42,6 @@ const claimFormShape = z.object({
   merchant_name: z.string().max(255).nullable().optional(),
   claim_amount: z.string().refine(isPositiveNumber, "Claim amount must be greater than 0"),
   currency: z.enum(CURRENCIES),
-  line_items: z.array(lineItemSchema).min(1, "Add at least one line item"),
 
   // FOOD_MEALS
   meal_type: z.string().nullable().optional(),
@@ -96,7 +88,6 @@ export const claimFormSchema = claimFormShape.superRefine((values, ctx) => {
   switch (values.category) {
     case "FOOD_MEALS":
       requireField(ctx, values.meal_type, "meal_type")
-      requireField(ctx, values.merchant_name, "merchant_name")
       requirePositiveInt(ctx, values.number_of_people, "number_of_people", "At least 1 person")
       break
     case "TRAVEL":
@@ -141,7 +132,6 @@ export function buildDefaultValues(
     merchant_name: "",
     claim_amount: "0",
     currency: "INR",
-    line_items: [{ item_header: "", item_amount: "" }],
     meal_type: "",
     number_of_people: "1",
     travel_type: "",

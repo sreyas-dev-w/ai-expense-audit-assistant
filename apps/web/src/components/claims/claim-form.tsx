@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FormField } from "@/components/form-field"
-import { LineItemsField } from "@/components/claims/line-items-field"
+import { ReceiptPreview } from "@/components/claims/receipt-preview"
 import {
   CURRENCIES,
   EXPENSE_CATEGORIES,
@@ -42,14 +42,10 @@ function toClaimCreate(values: ClaimFormValues): ClaimCreate {
     currency: values.currency,
   }
 
-  const lineItems = values.line_items.map((item) => ({
-    item_header: item.item_header,
-    item_amount: item.item_amount,
-  }))
-
   // `superRefine` in claim-schema.ts guarantees the category-specific fields
   // below are non-empty by the time this runs; the `?? ""` / `?? "1"` fallbacks
-  // only satisfy TypeScript's nullable field types.
+  // only satisfy TypeScript's nullable field types. `line_items` is stored empty
+  // because the OCR extraction agent derives line items from the receipt.
   switch (values.category) {
     case "FOOD_MEALS":
       return {
@@ -59,7 +55,7 @@ function toClaimCreate(values: ClaimFormValues): ClaimCreate {
           meal_type: values.meal_type ?? "",
           merchant_name: values.merchant_name ?? "",
           number_of_people: Number(values.number_of_people ?? "1"),
-          line_items: lineItems,
+          line_items: [],
         },
       }
     case "TRAVEL":
@@ -73,7 +69,7 @@ function toClaimCreate(values: ClaimFormValues): ClaimCreate {
           travel_date: values.travel_date ?? "",
           travel_class: values.travel_class || null,
           ticket_number: values.ticket_number || null,
-          line_items: lineItems,
+          line_items: [],
         },
       }
     case "ACCOMMODATION":
@@ -88,7 +84,7 @@ function toClaimCreate(values: ClaimFormValues): ClaimCreate {
           number_of_nights: Number(values.number_of_nights ?? "1"),
           no_of_rooms: Number(values.no_of_rooms ?? "1"),
           room_type: values.room_type || null,
-          line_items: lineItems,
+          line_items: [],
         },
       }
     case "OTHER":
@@ -99,7 +95,7 @@ function toClaimCreate(values: ClaimFormValues): ClaimCreate {
           expense_type: values.expense_type ?? "",
           merchant_name: values.merchant_name || null,
           additional_details: null,
-          line_items: lineItems,
+          line_items: [],
         },
       }
   }
@@ -118,16 +114,6 @@ export function ClaimForm() {
   })
 
   const category = form.watch("category")
-  const lineItems = form.watch("line_items")
-
-  // Claim amount auto-sums from line items but stays editable, so a manual
-  // adjustment (e.g. after a discount) is not silently overwritten unless
-  // the user changes a line item afterwards.
-  React.useEffect(() => {
-    const total = lineItems.reduce((sum, item) => sum + (Number(item.item_amount) || 0), 0)
-    form.setValue("claim_amount", String(Math.round(total * 100) / 100), { shouldValidate: false })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(lineItems)])
 
   function handleCategoryChange(next: Category) {
     if (next === category) return
@@ -177,40 +163,21 @@ export function ClaimForm() {
             </Select>
           </FormField>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <FormField
-              label="Business purpose"
-              htmlFor="business_purpose"
-              error={form.formState.errors.business_purpose?.message}
-            >
-              <Textarea id="business_purpose" rows={2} {...form.register("business_purpose")} />
-            </FormField>
-
-            <FormField
-              label="Merchant name"
-              htmlFor="merchant_name"
-              error={form.formState.errors.merchant_name?.message}
-            >
-              <Input id="merchant_name" {...form.register("merchant_name")} />
-            </FormField>
-          </div>
+          <FormField
+            label="Business purpose"
+            htmlFor="business_purpose"
+            error={form.formState.errors.business_purpose?.message}
+          >
+            <Textarea id="business_purpose" rows={2} {...form.register("business_purpose")} />
+          </FormField>
 
           <CategoryFields category={category} form={form} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Line items</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <LineItemsField form={form} />
 
           <div className="grid gap-4 md:grid-cols-2">
             <FormField
               label="Claim amount"
               htmlFor="claim_amount"
-              hint="Auto-summed from line items, still editable"
+              hint="Enter the total from the receipt"
               error={form.formState.errors.claim_amount?.message}
             >
               <Input
@@ -247,7 +214,7 @@ export function ClaimForm() {
         <CardHeader>
           <CardTitle>Receipt</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <FormField label="Receipt file" htmlFor="receipt" error={receiptError ?? undefined} hint="PNG, JPEG or PDF">
             <label
               htmlFor="receipt"
@@ -269,6 +236,8 @@ export function ClaimForm() {
               }}
             />
           </FormField>
+
+          <ReceiptPreview file={receipt} />
         </CardContent>
       </Card>
 

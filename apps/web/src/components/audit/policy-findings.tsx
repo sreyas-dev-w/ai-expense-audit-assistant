@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { FileTextIcon } from "@/components/icons"
 import { SeverityBadge, CheckStatusBadge } from "@/components/claims/status-badge"
 import { formatPercent, toTitleCase } from "@/lib/format"
 import type { PolicyAgentOutput } from "@/lib/types/api"
@@ -35,9 +36,12 @@ export function PolicyFindings({ policy }: { policy: PolicyAgentOutput }) {
                   <p className="text-sm text-muted-foreground">{violation.detail}</p>
                 )}
                 {violation.policy_reference && (
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {violation.policy_reference}
-                  </p>
+                  <div className="flex items-center gap-2 self-start rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5">
+                    <FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {violation.policy_reference}
+                    </span>
+                  </div>
                 )}
               </div>
             ))}
