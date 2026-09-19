@@ -58,7 +58,9 @@ build_query → retrieve_policy → (route) → reason | insufficient_context | 
   `FoodMeals | Travel | Accommodation | Other`), evaluated against `PolicyClaimContext`.
 - **Output contract:** `PolicyAgentOutput` (decision, severity, checks list, references, confidence) wrapped in
   `PolicyAgentResult` with explicit `error`/`status` fields. LLM output is validated with Pydantic before being
-  accepted; invalid output is an explicit error state, never a silent pass.
+  accepted; invalid output is an explicit error state, never a silent pass. Grounding references carry
+  `policy_filename` (the source `policy_documents.filename`) alongside `chunk_id`/`policy_id` so the UI can display
+  the policy document name instead of a bare numeric id.
 - **Retrieval:** `rag_service.search` under a configured `top_k`; empty or sub-threshold context routes to
   `insufficient_context` (flagged, not failed) so no unsupported claims are drawn.
 - **Entry points:** `run_policy_agent(request, ...)` for one-off calls; `build_policy_agent(rag_service,

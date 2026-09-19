@@ -1,6 +1,5 @@
 import Link from "next/link"
 import {
-  ClipboardCheckIcon,
   FileSearchIcon,
   ScaleIcon,
   ShieldCheckIcon,
@@ -33,11 +32,8 @@ export default function HomePage() {
   return (
     <div className="flex min-h-[100dvh] flex-col">
       <header className="flex h-16 items-center justify-between border-b px-6">
-        <div className="flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <ClipboardCheckIcon className="size-4" />
-          </div>
-          <span className="font-heading text-sm font-semibold">Expense Audit</span>
+        <div className="flex items-center">
+          <span className="font-heading text-base font-semibold">Expense Audit</span>
         </div>
         <Button asChild size="sm">
           <Link href="/login">Sign in</Link>

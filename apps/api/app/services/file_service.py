@@ -49,6 +49,34 @@ def receipt_url_from_path(stored: Path) -> str:
         return str(stored)
 
 
+def resolve_receipt_path(receipt_url: str) -> Path:
+    """Resolve a persisted ``receipt_url`` to an absolute local file path.
+
+    Mirrors ``FetchReceiptTool._read_local``: relative values are resolved
+    against the app root. Only files inside the configured receipt storage
+    directory are served — anything else (path traversal escapes, absolute
+    paths outside the storage area) or non-local http(s) URLs is rejected.
+    """
+    value = (receipt_url or "").strip()
+    if not value:
+        raise ValueError("Receipt URL is empty")
+    if value.startswith(("http://", "https://")):
+        raise ValueError("http(s) receipts are not served from local storage")
+
+    candidate = Path(value)
+    if not candidate.is_absolute():
+        candidate = app_root_dir() / candidate
+    resolved = candidate.resolve()
+
+    storage_root = receipt_storage_dir().resolve()
+    if resolved != storage_root and storage_root not in resolved.parents:
+        raise ValueError("Receipt path resolves outside the receipt storage directory")
+
+    if not resolved.is_file():
+        raise FileNotFoundError(f"Receipt not found at {value}")
+    return resolved
+
+
 def policy_storage_dir() -> Path:
     return _storage_dir(settings.policy_storage_dir)
 

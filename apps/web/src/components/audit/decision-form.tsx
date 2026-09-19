@@ -98,7 +98,7 @@ export function DecisionForm({ claim }: { claim: ClaimDetailsResponse }) {
             type="button"
             variant="outline"
             size="sm"
-            disabled={updateAudit.isPending}
+            disabled
             onClick={() => decide("needs_revision")}
           >
             <RotateCcwIcon />

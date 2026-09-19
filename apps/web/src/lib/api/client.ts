@@ -4,6 +4,20 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
 
 /**
+ * Build a fetchable URL for a claim's `receipt_url`.
+ *
+ * The stored value is either an absolute http(s) URL (used as-is) or a local
+ * path relative to the API process root (e.g. `storage_dump/receipts/….jpg`)
+ * served by the backend's `GET /api/v1/receipts/{path}` route.
+ */
+export function receiptFileUrl(receiptUrl: string | null): string | null {
+  if (!receiptUrl) return null
+  if (/^https?:\/\//i.test(receiptUrl)) return receiptUrl
+  const encoded = receiptUrl.split("/").map(encodeURIComponent).join("/")
+  return `${API_BASE_URL}/api/v1/receipts/${encoded}`
+}
+
+/**
  * Normalised API error. `detail` mirrors the FastAPI error body, which is a
  * plain string for most errors but an array of `{loc, msg, type}` objects for
  * request validation failures (422s) — see `apps/api` error envelope notes.
@@ -90,4 +104,6 @@ export const api = {
     request<T>(path, { method: "PATCH", body, signal }),
   postForm: <T>(path: string, formData: FormData, signal?: AbortSignal) =>
     request<T>(path, { method: "POST", formData, signal }),
+  delete: <T>(path: string, signal?: AbortSignal) =>
+    request<T>(path, { method: "DELETE", signal }),
 }

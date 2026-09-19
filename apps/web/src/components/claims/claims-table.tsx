@@ -1,8 +1,9 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { FileQuestionIcon, SearchIcon } from "@/components/icons"
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FileQuestionIcon, SearchIcon } from "@/components/icons";
 import {
   Table,
   TableBody,
@@ -10,24 +11,24 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AiDecisionBadge,
   AiRunStatusBadge,
   ClaimStatusBadge,
-} from "@/components/claims/status-badge"
-import { formatDate, formatMoney, toTitleCase } from "@/lib/format"
-import type { ClaimDetailsResponse, EmployeeResponse } from "@/lib/types/api"
+} from "@/components/claims/status-badge";
+import { formatDate, formatMoney, toTitleCase } from "@/lib/format";
+import type { ClaimDetailsResponse, EmployeeResponse } from "@/lib/types/api";
 
 interface ClaimsTableProps {
-  claims: ClaimDetailsResponse[]
-  isLoading: boolean
-  detailBasePath: "/claims" | "/approvals"
-  employeeNames?: Map<string, EmployeeResponse>
-  emptyTitle: string
-  emptyDescription: string
+  claims: ClaimDetailsResponse[];
+  isLoading: boolean;
+  detailBasePath: "/claims" | "/approvals";
+  employeeNames?: Map<string, EmployeeResponse>;
+  emptyTitle: string;
+  emptyDescription: string;
 }
 
 export function ClaimsTable({
@@ -38,12 +39,13 @@ export function ClaimsTable({
   emptyTitle,
   emptyDescription,
 }: ClaimsTableProps) {
-  const [search, setSearch] = React.useState("")
-  const [statusFilter, setStatusFilter] = React.useState<string>("all")
+  const router = useRouter();
+  const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
 
   const filtered = claims.filter((claim) => {
-    if (statusFilter !== "all" && claim.status !== statusFilter) return false
-    if (!search) return true
+    if (statusFilter !== "all" && claim.status !== statusFilter) return false;
+    if (!search) return true;
     const haystack = [
       claim.business_purpose,
       claim.merchant_name,
@@ -53,11 +55,34 @@ export function ClaimsTable({
     ]
       .filter(Boolean)
       .join(" ")
-      .toLowerCase()
-    return haystack.includes(search.toLowerCase())
-  })
+      .toLowerCase();
+    return haystack.includes(search.toLowerCase());
+  });
 
-  const statuses = Array.from(new Set(claims.map((c) => c.status)))
+  const statuses = Array.from(new Set(claims.map((c) => c.status)));
+
+  const openClaim = (claimId: number) => {
+    router.push(`${detailBasePath}/${claimId}`);
+  };
+
+  const handleRowClick = (
+    e: React.MouseEvent<HTMLTableRowElement>,
+    claimId: number,
+  ) => {
+    if ((e.target as HTMLElement).closest("a")) return;
+    openClaim(claimId);
+  };
+
+  const handleRowKeyDown = (
+    e: React.KeyboardEvent<HTMLTableRowElement>,
+    claimId: number,
+  ) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if ((e.target as HTMLElement).closest("a")) return;
+      openClaim(claimId);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -66,7 +91,7 @@ export function ClaimsTable({
           <Skeleton key={i} className="h-12 w-full" />
         ))}
       </div>
-    )
+    );
   }
 
   if (claims.length === 0) {
@@ -74,9 +99,11 @@ export function ClaimsTable({
       <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-16 text-center">
         <FileQuestionIcon className="size-8 text-muted-foreground" />
         <p className="font-medium">{emptyTitle}</p>
-        <p className="max-w-sm text-sm text-muted-foreground">{emptyDescription}</p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          {emptyDescription}
+        </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -92,7 +119,11 @@ export function ClaimsTable({
           />
         </div>
         <div className="flex flex-wrap gap-1">
-          <FilterChip label="All" active={statusFilter === "all"} onClick={() => setStatusFilter("all")} />
+          <FilterChip
+            label="All"
+            active={statusFilter === "all"}
+            onClick={() => setStatusFilter("all")}
+          />
           {statuses.map((status) => (
             <FilterChip
               key={status}
@@ -115,12 +146,21 @@ export function ClaimsTable({
               <TableHead>Submitted</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>AI audit</TableHead>
-              <TableHead>Recommendation</TableHead>
+              {detailBasePath === "/approvals" ? (
+                <TableHead>AI Recommendation</TableHead>
+              ) : null}
+              {/*<TableHead>AI Recommendation</TableHead>*/}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((claim) => (
-              <TableRow key={claim.claim_id} className="cursor-pointer">
+              <TableRow
+                key={claim.claim_id}
+                className="cursor-pointer"
+                tabIndex={0}
+                onClick={(e) => handleRowClick(e, claim.claim_id)}
+                onKeyDown={(e) => handleRowKeyDown(e, claim.claim_id)}
+              >
                 <TableCell className="p-0">
                   <Link
                     href={`${detailBasePath}/${claim.claim_id}`}
@@ -128,13 +168,16 @@ export function ClaimsTable({
                   >
                     <span className="font-medium">#{claim.claim_id}</span>
                     <span className="max-w-48 truncate text-xs text-muted-foreground">
-                      {claim.business_purpose ?? claim.merchant_name ?? "No description"}
+                      {claim.business_purpose ??
+                        claim.merchant_name ??
+                        "No description"}
                     </span>
                   </Link>
                 </TableCell>
                 {employeeNames && (
                   <TableCell>
-                    {employeeNames.get(claim.employee_id)?.employee_name ?? claim.employee_id}
+                    {employeeNames.get(claim.employee_id)?.employee_name ??
+                      claim.employee_id}
                   </TableCell>
                 )}
                 <TableCell>{toTitleCase(claim.category)}</TableCell>
@@ -150,9 +193,14 @@ export function ClaimsTable({
                 <TableCell>
                   <AiRunStatusBadge status={claim.ai_run_status} />
                 </TableCell>
-                <TableCell>
+                {detailBasePath === "/approvals" ? (
+                  <TableCell>
+                    <AiDecisionBadge decision={claim.ai_decision} />
+                  </TableCell>
+                ) : null}
+                {/*<TableCell>
                   <AiDecisionBadge decision={claim.ai_decision} />
-                </TableCell>
+                </TableCell>*/}
               </TableRow>
             ))}
           </TableBody>
@@ -165,7 +213,7 @@ export function ClaimsTable({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 function FilterChip({
@@ -173,9 +221,9 @@ function FilterChip({
   active,
   onClick,
 }: {
-  label: string
-  active: boolean
-  onClick: () => void
+  label: string;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
     <button
@@ -189,5 +237,5 @@ function FilterChip({
     >
       {label}
     </button>
-  )
+  );
 }

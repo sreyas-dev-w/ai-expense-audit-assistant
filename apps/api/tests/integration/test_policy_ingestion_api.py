@@ -172,6 +172,8 @@ async def test_search_returns_exact_match_first(client, policy_service, seeded_p
         top = body["results"][0]
         assert top["chunk_id"] == chunk_id
         assert top["similarity_score"] > 0.99
+        # the policy document filename is joined in from policy_documents
+        assert top["policy_filename"] == SEED_PDF.name
     finally:
         await _delete_if_created(policy_id, seeded_policy_ids, policy_service)
 
