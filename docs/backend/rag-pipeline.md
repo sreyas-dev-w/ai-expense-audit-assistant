@@ -71,6 +71,8 @@ embedding_service.GeminiEmbeddingProvider   (gemini-embedding-2, 1536-dim, exter
 repositories/policy_repository.add_chunks    (single short transaction)
         ↓
 POST /api/v1/policies/search           → rag_service.search (pgvector cosine, (1 - distance))
+        ↓
+policy_repository.search_chunks        → joins policy_documents for the source filename (surfaces policy_filename)
 ```
 
 Persistence tables: `policy_documents` (one row per ingested PDF, `sha256` dedupe, forced re-ingest allowed) and

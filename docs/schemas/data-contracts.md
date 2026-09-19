@@ -48,7 +48,9 @@ Policy domain schemas are defined once in `apps/api/app/schemas/policy.py` and r
 RAG agent, and services:
 
 - API: `PolicyDocumentSummary`, `PolicyIngestResult`, `PolicySearchRequest`, `RetrievedPolicyChunk`,
-  `PolicySearchResponse` (ingestion/search endpoints in `app/api/policies.py`).
+  `PolicySearchResponse` (ingestion/search endpoints in `app/api/policies.py`). Both `RetrievedPolicyChunk` and the
+  grounding `PolicyReference` carry `policy_filename` (joined from `policy_documents.filename` during search) so
+  audit results can always name the policy document they cite.
 - Agent input: `PolicyClaimContext` + `PolicyEvaluationRequest` — a discriminated union over
   `FoodMealsPolicyEvaluation | TravelPolicyEvaluation | AccommodationPolicyEvaluation | OtherPolicyEvaluation`
   that reuses the canonical category data models from `app/schemas/expense.py` (so agent and claim-extraction
