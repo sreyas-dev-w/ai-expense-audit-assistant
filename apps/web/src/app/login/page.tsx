@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { ClipboardCheckIcon, Loader2Icon } from "@/components/icons"
+import { ClipboardCheckIcon, CopyIcon, Loader2Icon } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +29,11 @@ export default function LoginPage() {
   const setSession = useSession((state) => state.setSession)
   const [serverError, setServerError] = React.useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+
+  function fillDemoCredentials() {
+    form.setValue("username", "emp001", { shouldValidate: true })
+    form.setValue("password", "password@123", { shouldValidate: true })
+  }
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -92,7 +97,7 @@ export default function LoginPage() {
                 <Input
                   id="username"
                   autoComplete="username"
-                  placeholder="emp001"
+                  placeholder="user@ust.com"
                   aria-invalid={!!form.formState.errors.username}
                   {...form.register("username")}
                 />
@@ -122,14 +127,21 @@ export default function LoginPage() {
                 {isSubmitting && <Loader2Icon className="animate-spin" />}
                 Sign in
               </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={fillDemoCredentials}
+                className="w-full"
+              >
+                <CopyIcon className="size-4" />
+                Use demo credentials
+              </Button>
             </form>
           </CardContent>
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          Demo accounts: <span className="font-mono">emp001</span> through{" "}
-          <span className="font-mono">emp032</span>, password{" "}
-          <span className="font-mono">password@123</span>.{" "}
           <Link href="/" className="underline underline-offset-4 hover:text-foreground">
             Back to overview
           </Link>

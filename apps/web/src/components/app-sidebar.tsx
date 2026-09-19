@@ -71,9 +71,13 @@ export function AppSidebar() {
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center px-2 py-1.5">
-          <span className="truncate font-heading text-base font-semibold">
+<Link
+            href="/"
+            aria-label="Expense Audit home"
+            className="truncate font-heading text-base font-semibold transition-colors hover:text-primary"
+          >
             Expense Audit
-          </span>
+          </Link>
         </div>
       </SidebarHeader>
       <SidebarContent>
